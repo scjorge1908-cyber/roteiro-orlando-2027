@@ -70,7 +70,7 @@ function menuMostrarPinAdmin() {
  * ========================================================= */
 
 function setup() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const ss = SpreadsheetApp.getActiveSpreadsheet() || ss_();
   PropertiesService.getScriptProperties().setProperty('SS_ID', ss.getId());
 
   Object.keys(CABECALHOS).forEach(function (nome) {
@@ -112,8 +112,22 @@ function setup() {
  *  API PÚBLICA (chamada pelo Index.html)
  * ========================================================= */
 
+/** Cria as abas automaticamente no primeiro acesso, caso o setup() ainda não tenha sido rodado. */
+function garantirSetup_() {
+  const planilha = ss_();
+  if (planilha.getSheetByName(ABA.CONFIG) && planilha.getSheetByName(ABA.ATRACOES)) return;
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    if (!planilha.getSheetByName(ABA.CONFIG) || !planilha.getSheetByName(ABA.ATRACOES)) setup();
+  } finally {
+    lock.releaseLock();
+  }
+}
+
 function api_dados() {
   try {
+    garantirSetup_();
     const config = {};
     ler_(ABA.CONFIG).forEach(function (c) { if (c.chave !== 'pin_admin') config[c.chave] = c.valor; });
     const pessoas = ler_(ABA.PESSOAS).map(function (p) {
