@@ -245,6 +245,12 @@ function locaisOrdenados(filtro) {
 
 /* ===================== INICIALIZAÇÃO ===================== */
 function iniciar() {
+  if (typeof google === 'undefined' || !google.script || !google.script.run) {
+    document.getElementById('app').innerHTML = '<div class="vazio"><b>🔗</b>Este arquivo só funciona dentro do <b>link do App da Web</b> do Apps Script ' +
+      '(endereço começando com <b>script.google.com/macros/s/…/exec</b>).<br><br>Ele não abre direto pelo computador, pelo GitHub ou pela Vercel.<br><br>' +
+      'No Apps Script: <b>Implantar → Gerenciar implantações</b> e copie o link do App da Web.</div>';
+    return;
+  }
   run('api_dados').then(function (r) {
     if (!r || !r.ok) throw new Error(r ? r.erro : 'Sem resposta');
     S.d = r.dados;
