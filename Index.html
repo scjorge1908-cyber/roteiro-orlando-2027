@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --azul: #0b1f4b;
+      --azul2: #1b3a8a;
+      --ouro: #f5b82e;
+      --ceu: #e9f1ff;
+      --fundo: #f3f6fb;
+      --texto: #172036;
+      --suave: #5d6a85;
+      --linha: #dfe6f2;
+      --quero: #ff4f7b;
+      --tanto: #3b82f6;
+      --nao: #8a94a8;
+      --perigo: #d93636;
+      --ok: #16a36a;
+      --raio: 18px;
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { margin: 0; padding: 0; background: var(--fundo); color: var(--texto); font-family: 'Inter', system-ui, sans-serif; font-size: 15px; }
+    h1, h2, h3 { font-family: 'Fredoka', 'Inter', sans-serif; margin: 0; }
+    button { font-family: inherit; cursor: pointer; }
+    input, select { font-family: inherit; font-size: 15px; }
+
+    #topo { background: linear-gradient(135deg, var(--azul) 0%, var(--azul2) 100%); color: #fff; padding: 18px 16px 22px; position: relative; overflow: hidden; }
+    #topo::after { content: '✨'; position: absolute; right: 14px; top: 10px; font-size: 42px; opacity: .25; }
+    #topo h1 { font-size: 23px; letter-spacing: .3px; }
+    .sub { opacity: .85; font-size: 13px; margin-top: 4px; }
+    .chip-eu { display: inline-flex; align-items: center; gap: 8px; margin-top: 12px; background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.25); color: #fff; border-radius: 999px; padding: 6px 12px; font-size: 13px; }
+    .chip-eu button { background: none; border: 0; color: var(--ouro); font-weight: 700; padding: 0; font-size: 13px; }
+    .contagem { display: inline-block; background: var(--ouro); color: var(--azul); font-weight: 700; border-radius: 999px; padding: 4px 10px; font-size: 12px; margin-top: 10px; margin-right: 6px; }
+
+    main { max-width: 760px; margin: 0 auto; padding: 14px 16px 110px; }
+    .titulo-sec { display: flex; align-items: baseline; justify-content: space-between; margin: 8px 2px 12px; gap: 10px; }
+    .titulo-sec h2 { font-size: 20px; color: var(--azul); }
+    .titulo-sec span { color: var(--suave); font-size: 13px; }
+    .dica { background: var(--ceu); border: 1px solid #cfe0ff; color: var(--azul2); border-radius: 14px; padding: 10px 12px; font-size: 13px; margin-bottom: 14px; line-height: 1.45; }
+
+    .card { background: #fff; border-radius: var(--raio); box-shadow: 0 2px 10px rgba(11,31,75,.07); overflow: hidden; margin-bottom: 14px; border: 1px solid var(--linha); }
+    .card .corpo { padding: 12px 14px 14px; }
+    .card h3 { font-size: 18px; color: var(--azul); }
+    .desc { color: var(--suave); font-size: 13.5px; line-height: 1.45; margin: 6px 0 10px; }
+    .badges { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+    .badge { font-size: 11.5px; font-weight: 600; padding: 3px 8px; border-radius: 999px; background: #eef2f9; color: var(--azul2); }
+    .badge.ouro { background: #fff4d6; color: #8a5a00; }
+    .badge.alerta { background: #ffe6e6; color: var(--perigo); }
+    .badge.ok { background: #e2f7ee; color: var(--ok); }
+
+    .foto { position: relative; background: linear-gradient(135deg, #cfe0ff, #f6e3ff); display: flex; align-items: center; justify-content: center; overflow: hidden; }
+    .foto img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .foto span { font-size: 40px; opacity: .55; }
+    .foto.grande { height: 180px; }
+    .foto.mini { width: 92px; min-width: 92px; height: 92px; border-radius: 14px; }
+    .foto.mini span { font-size: 30px; }
+    .foto .cred { position: absolute; right: 6px; bottom: 6px; font-size: 10px; background: rgba(0,0,0,.45); color: #fff; padding: 2px 6px; border-radius: 6px; text-decoration: none; }
+
+    .votos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 8px; }
+    .votos button { border: 1.5px solid var(--linha); background: #fff; border-radius: 12px; padding: 8px 4px; font-size: 12.5px; font-weight: 600; color: var(--texto); display: flex; flex-direction: column; align-items: center; gap: 2px; }
+    .votos button b { font-size: 18px; line-height: 1; }
+    .votos button.on.v2 { border-color: var(--quero); background: #fff0f4; color: var(--quero); }
+    .votos button.on.v1 { border-color: var(--tanto); background: #eef4ff; color: var(--tanto); }
+    .votos button.on.vn { border-color: var(--nao); background: #f1f3f7; color: #4b5568; }
+    .votos.peq button { padding: 6px 2px; font-size: 11.5px; }
+    .votos.peq button b { font-size: 15px; }
+
+    .resumo { display: flex; align-items: center; gap: 10px; margin-top: 8px; font-size: 12.5px; color: var(--suave); flex-wrap: wrap; }
+    .resumo .pts { margin-left: auto; font-weight: 700; color: var(--azul); }
+    details.quem { margin-top: 6px; font-size: 12.5px; color: var(--suave); }
+    details.quem summary { cursor: pointer; color: var(--azul2); font-weight: 600; }
+    details.quem div { margin-top: 4px; line-height: 1.5; }
+
+    .acoes { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+    .btn { border: 0; border-radius: 12px; padding: 10px 14px; font-weight: 700; font-size: 14px; background: var(--azul); color: #fff; }
+    .btn.sec { background: var(--ceu); color: var(--azul2); }
+    .btn.ouro { background: var(--ouro); color: var(--azul); }
+    .btn.perigo { background: #ffe6e6; color: var(--perigo); }
+    .btn.peq { padding: 7px 10px; font-size: 12.5px; border-radius: 10px; }
+    .btn.largo { width: 100%; }
+    a.btn { text-decoration: none; display: inline-block; }
+
+    .chips { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 10px; scrollbar-width: none; }
+    .chips::-webkit-scrollbar { display: none; }
+    .chip { white-space: nowrap; border: 1.5px solid var(--linha); background: #fff; border-radius: 999px; padding: 7px 12px; font-size: 13px; font-weight: 600; color: var(--azul2); }
+    .chip.on { background: var(--azul); color: #fff; border-color: var(--azul); }
+
+    .area { margin: 18px 2px 8px; font-family: 'Fredoka', sans-serif; font-size: 16px; color: var(--azul2); display: flex; align-items: center; gap: 8px; }
+    .area::after { content: ''; flex: 1; height: 1px; background: var(--linha); }
+
+    .item { display: flex; gap: 12px; padding: 12px; }
+    .item .info { flex: 1; min-width: 0; }
+    .item h4 { margin: 0; font-size: 15px; color: var(--azul); line-height: 1.3; }
+    .item .desc { margin: 4px 0 4px; font-size: 12.5px; }
+
+    .dia { border-left: 5px solid var(--ouro); }
+    .dia .cab { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+    .dia .data { font-family: 'Fredoka', sans-serif; font-size: 17px; color: var(--azul); text-transform: capitalize; }
+    .dia .local { font-weight: 700; font-size: 15px; margin-top: 2px; }
+    .passo { display: flex; gap: 10px; padding: 7px 0; border-bottom: 1px dashed var(--linha); font-size: 14px; }
+    .passo:last-child { border-bottom: 0; }
+    .passo .n { width: 24px; height: 24px; min-width: 24px; border-radius: 50%; background: var(--ceu); color: var(--azul2); font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+    .passo .p { margin-left: auto; color: var(--suave); font-size: 12px; white-space: nowrap; }
+    .passo .al { display: block; color: var(--perigo); font-size: 12px; margin-top: 2px; }
+    .subarea { font-size: 12px; font-weight: 700; color: var(--suave); text-transform: uppercase; letter-spacing: .5px; margin: 10px 0 2px; }
+
+    .tabela { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+    .tabela td { padding: 8px 4px; border-bottom: 1px solid var(--linha); vertical-align: middle; }
+    .tabela td.num { text-align: right; font-weight: 700; color: var(--azul); white-space: nowrap; }
+    .barra { height: 6px; background: #eef2f9; border-radius: 6px; overflow: hidden; margin-top: 4px; }
+    .barra i { display: block; height: 100%; background: linear-gradient(90deg, var(--ouro), var(--quero)); }
+
+    .campo { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+    .campo label { font-size: 12px; font-weight: 700; color: var(--suave); }
+    .campo input, .campo select { border: 1.5px solid var(--linha); border-radius: 10px; padding: 10px; background: #fff; width: 100%; }
+    .grade2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .linha-dia { border: 1px solid var(--linha); border-radius: 14px; padding: 10px; margin-bottom: 10px; background: #fbfcff; }
+    .linha-dia .data { font-weight: 700; color: var(--azul); margin-bottom: 8px; text-transform: capitalize; }
+    .check { display: flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 600; margin: 4px 0 8px; }
+    .check input { width: 20px; height: 20px; }
+
+    nav#nav { position: fixed; left: 0; right: 0; bottom: 0; background: #fff; border-top: 1px solid var(--linha); display: grid; grid-template-columns: repeat(5, 1fr); padding: 6px 4px calc(6px + env(safe-area-inset-bottom)); z-index: 20; box-shadow: 0 -4px 16px rgba(11,31,75,.06); }
+    nav#nav button { background: none; border: 0; display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 11px; font-weight: 600; color: var(--suave); padding: 4px 0; }
+    nav#nav button b { font-size: 21px; line-height: 1.1; }
+    nav#nav button.on { color: var(--azul); }
+    nav#nav button.on b { transform: scale(1.12); }
+
+    #modal { position: fixed; inset: 0; background: rgba(11,31,75,.55); z-index: 50; display: none; align-items: flex-end; justify-content: center; }
+    #modal.aberto { display: flex; }
+    .folha { background: #fff; width: 100%; max-width: 520px; border-radius: 22px 22px 0 0; padding: 20px 18px calc(22px + env(safe-area-inset-bottom)); max-height: 90vh; overflow: auto; }
+    .folha h2 { color: var(--azul); font-size: 21px; margin-bottom: 4px; }
+    .folha p { color: var(--suave); font-size: 13.5px; margin: 4px 0 14px; }
+    .grade-pessoas { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 12px; }
+    .grade-pessoas button { border: 1.5px solid var(--linha); background: #fff; border-radius: 14px; padding: 12px 8px; font-weight: 700; color: var(--azul); font-size: 14.5px; }
+    .pin { letter-spacing: 10px; font-size: 26px !important; text-align: center; font-weight: 700; }
+
+    #toast { position: fixed; left: 50%; bottom: 86px; transform: translateX(-50%) translateY(20px); background: var(--azul); color: #fff; padding: 10px 16px; border-radius: 12px; font-size: 13.5px; opacity: 0; transition: all .25s; z-index: 60; pointer-events: none; max-width: 90vw; text-align: center; }
+    #toast.on { opacity: 1; transform: translateX(-50%) translateY(0); }
+    #toast.erro { background: var(--perigo); }
+
+    .carregando { text-align: center; padding: 60px 20px; color: var(--suave); }
+    .giro { width: 38px; height: 38px; border: 4px solid var(--ceu); border-top-color: var(--azul); border-radius: 50%; margin: 0 auto 14px; animation: giro 0.9s linear infinite; }
+    @keyframes giro { to { transform: rotate(360deg); } }
+    .vazio { text-align: center; color: var(--suave); padding: 30px 10px; }
+    .vazio b { display: block; font-size: 40px; margin-bottom: 8px; }
+  </style>
+</head>
+<body>
+  <header id="topo"></header>
+  <main id="app"><div class="carregando"><div class="giro"></div>Carregando parques…</div></main>
+  <nav id="nav"></nav>
+  <div id="modal"></div>
+  <div id="toast"></div>
+
+<script>
+/* ===================== ESTADO ===================== */
+var S = {
+  d: null,            // dados vindos da planilha
+  eu: null,           // {id, nome, altura_cm, pin}
+  aba: 'parques',
+  local: 'MK',
+  cat: '',
+  adminPin: '',
+  modal: null,        // {etapa, pessoa}
+  fotos: {},          // cache de fotos encontradas {chave: {url, cred}}
+  tentou: {},         // chaves já buscadas
+  idx: null
+};
+
+var VOTOS = [
+  { v: 2, emo: '😍', rot: 'Quero muito', cls: 'v2' },
+  { v: 1, emo: '🙂', rot: 'Tanto faz', cls: 'v1' },
+  { v: -1, emo: '🙅', rot: 'Não quero', cls: 'vn' }
+];
+var CAT_EMO = { 'Radical': '🎢', 'Família': '👨‍👩‍👧', 'Infantil': '🧸', 'Show': '🎭', 'Simulador': '🚀', 'Aquática': '💦', 'Passeio': '🚶', 'Compras': '🛍️' };
+var GRUPO_EMO = { 'Disney': '🏰', 'Universal': '🌎', 'SeaWorld': '🐬', 'Busch Gardens': '🦒', 'LEGOLAND': '🧱', 'NASA': '🚀', 'Passeio': '🌴' };
+var TIPOS_DIA = { CHEGADA: '✈️ Chegada', PARQUE: '🎢 Parque', MIAMI: '🌴 Miami', RETORNO: '🧳 Retorno', LIVRE: '😴 Livre' };
+
+/* ===================== UTIL ===================== */
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
+function run(nome) {
+  var args = Array.prototype.slice.call(arguments, 1);
+  return new Promise(function (resolve, reject) {
+    var r = google.script.run.withSuccessHandler(resolve).withFailureHandler(function (e) { reject(e); });
+    r[nome].apply(r, args);
+  });
+}
+function toast(msg, erro) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'on' + (erro ? ' erro' : '');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(function () { t.className = ''; }, 2600);
+}
+function lerSessao() {
+  try { return JSON.parse(localStorage.getItem('roteiro2027_sessao') || 'null'); } catch (e) { return null; }
+}
+function salvarSessao(o) {
+  try { if (o) localStorage.setItem('roteiro2027_sessao', JSON.stringify(o)); else localStorage.removeItem('roteiro2027_sessao'); } catch (e) {}
+}
+function paraData(s) {
+  var p = String(s).split('-').map(Number);
+  return new Date(p[0], p[1] - 1, p[2]);
+}
+function fmtData(s) {
+  return paraData(s).toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit' });
+}
+function plural(n, s, p) { return n + ' ' + (n === 1 ? s : p); }
+
+/* ===================== DADOS ===================== */
+function indexar() {
+  var I = { local: {}, atrPorLocal: {}, atr: {}, agg: {}, nome: {}, votosPessoa: {} };
+  S.d.locais.forEach(function (l) { I.local[l.id] = l; });
+  S.d.atracoes.forEach(function (a) {
+    I.atr[a.id] = a;
+    (I.atrPorLocal[a.local_id] = I.atrPorLocal[a.local_id] || []).push(a);
+  });
+  S.d.pessoas.forEach(function (p) { I.nome[p.id] = p.nome; I.votosPessoa[p.id] = 0; });
+  S.d.votos.forEach(function (v) {
+    var k = v.tipo_item + ':' + v.item_id;
+    var g = I.agg[k] || (I.agg[k] = { q: 0, t: 0, n: 0, pts: 0, meu: 0, quem: { '2': [], '1': [], '-1': [] } });
+    var val = Number(v.valor);
+    if (val === 2) g.q++; else if (val === 1) g.t++; else if (val === -1) g.n++;
+    g.pts += val;
+    if (I.nome[v.pessoa_id]) g.quem[String(val)].push(I.nome[v.pessoa_id]);
+    if (S.eu && v.pessoa_id === S.eu.id) g.meu = val;
+    if (I.votosPessoa[v.pessoa_id] != null) I.votosPessoa[v.pessoa_id]++;
+  });
+  S.idx = I;
+}
+function agg(tipo, id) {
+  return S.idx.agg[tipo + ':' + id] || { q: 0, t: 0, n: 0, pts: 0, meu: 0, quem: { '2': [], '1': [], '-1': [] } };
+}
+function locaisOrdenados(filtro) {
+  return S.d.locais.filter(filtro).sort(function (a, b) { return Number(a.ordem) - Number(b.ordem); });
+}
+
+/* ===================== INICIALIZAÇÃO ===================== */
+function iniciar() {
+  run('api_dados').then(function (r) {
+    if (!r || !r.ok) throw new Error(r ? r.erro : 'Sem resposta');
+    S.d = r.dados;
+    var ses = lerSessao();
+    if (ses) {
+      var p = S.d.pessoas.find(function (x) { return x.id === ses.id; });
+      if (p) S.eu = { id: p.id, nome: p.nome, altura_cm: p.altura_cm, pin: ses.pin };
+      else salvarSessao(null);
+    }
+    indexar();
+    if (!S.eu) S.modal = { etapa: 'lista' };
+    render();
+  }).catch(function (e) {
+    document.getElementById('app').innerHTML = '<div class="vazio"><b>⚠️</b>Não foi possível carregar.<br>' + esc(e.message || e) + '<br><br><button class="btn" data-acao="recarregar">Tentar de novo</button></div>';
+  });
+}
+function recarregar() {
+  return run('api_dados').then(function (r) {
+    if (!r.ok) throw new Error(r.erro);
+    S.d = r.dados;
+    indexar();
+    render();
+  }).catch(function (e) { toast(String(e.message || e), true); });
+}
+
+/* ===================== RENDER ===================== */
+function render() {
+  if (!S.d) return;
+  renderTopo();
+  renderNav();
+  var y = window.scrollY;
+  var html = '';
+  if (S.aba === 'parques') html = vParques();
+  else if (S.aba === 'atracoes') html = vAtracoes();
+  else if (S.aba === 'passeios') html = vPasseios();
+  else if (S.aba === 'roteiro') html = vRoteiro();
+  else if (S.aba === 'grupo') html = vGrupo();
+  document.getElementById('app').innerHTML = html;
+  window.scrollTo(0, y);
+  renderModal();
+  observarFotos();
+}
+function irPara(aba) {
+  S.aba = aba;
+  render();
+  window.scrollTo(0, 0);
+}
+
+function renderTopo() {
+  var cheg = S.d.config.data_chegada || '2027-02-08';
+  var hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+  var falta = Math.round((paraData(cheg) - hoje) / 864e5);
+  var html = '<h1>🎢 ' + esc(S.d.config.nome_viagem || 'Roteiro Orlando 2027') + '</h1>' +
+    '<div class="sub">Tampa → Orlando → Miami → Tampa · 08 a 19/02/2027</div>' +
+    (falta > 0 ? '<span class="contagem">⏳ Faltam ' + falta + ' dias</span>' : '') +
+    '<span class="contagem" style="background:rgba(255,255,255,.18);color:#fff">👥 ' + plural(S.d.pessoas.length, 'pessoa', 'pessoas') + '</span><br>';
+  if (S.eu) html += '<span class="chip-eu">Olá, <b>' + esc(S.eu.nome) + '</b> · <button data-acao="sair">sair</button></span>';
+  else html += '<span class="chip-eu">Você está só olhando · <button data-acao="abrirLogin">entrar para votar</button></span>';
+  document.getElementById('topo').innerHTML = html;
+}
+
+function renderNav() {
+  var abas = [['parques', '🏰', 'Parques'], ['atracoes', '🎢', 'Atrações'], ['passeios', '🚀', 'Passeios'], ['roteiro', '🗓️', 'Roteiro'], ['grupo', '👥', 'Grupo']];
+  document.getElementById('nav').innerHTML = abas.map(function (a) {
+    return '<button class="' + (S.aba === a[0] ? 'on' : '') + '" data-acao="aba" data-aba="' + a[0] + '"><b>' + a[1] + '</b>' + a[2] + '</button>';
+  }).join('');
+}
+
+/* ---------- componentes ---------- */
+function foto(tipo, item, tam) {
+  var k = tipo + ':' + item.id;
+  var f = item.foto_url ? { url: item.foto_url, cred: item.foto_credito } : S.fotos[k];
+  var emo = tipo === 'LOCAL' ? (GRUPO_EMO[item.grupo] || '📍') : (CAT_EMO[item.categoria] || '⭐');
+  if (f && f.url) {
+    return '<div class="foto ' + tam + '"><img src="' + esc(f.url) + '" alt="' + esc(item.nome) + '" loading="lazy">' +
+      (f.cred ? '<a class="cred" href="' + esc(f.cred) + '" target="_blank" rel="noopener">Foto: Wikimedia</a>' : '') + '</div>';
+  }
+  return '<div class="foto ' + tam + ' pend" data-k="' + esc(k) + '" data-tipo="' + tipo + '" data-id="' + esc(item.id) + '" data-q="' + esc(item.foto_busca || item.nome) + '" data-nome="' + esc(item.nome) + '"><span>' + emo + '</span></div>';
+}
+
+function barraVotos(tipo, id, peq) {
+  var a = agg(tipo, id);
+  return '<div class="votos' + (peq ? ' peq' : '') + '">' + VOTOS.map(function (o) {
+    return '<button class="' + o.cls + (a.meu === o.v ? ' on' : '') + '" data-acao="votar" data-tipo="' + tipo + '" data-id="' + esc(id) + '" data-v="' + o.v + '"><b>' + o.emo + '</b>' + o.rot + '</button>';
+  }).join('') + '</div>';
+}
+
+function resumoVotos(tipo, id) {
+  var a = agg(tipo, id);
+  var total = a.q + a.t + a.n;
+  if (!total) return '<div class="resumo">Ninguém votou ainda</div>';
+  var quem = VOTOS.filter(function (o) { return a.quem[String(o.v)].length; }).map(function (o) {
+    return o.emo + ' ' + esc(a.quem[String(o.v)].join(', '));
+  }).join('<br>');
+  return '<div class="resumo"><span>😍 ' + a.q + '</span><span>🙂 ' + a.t + '</span><span>🙅 ' + a.n + '</span><span class="pts">' + plural(a.pts, 'ponto', 'pontos') + '</span></div>' +
+    '<details class="quem"><summary>Quem votou</summary><div>' + quem + '</div></details>';
+}
+
+function badgeAltura(a) {
+  var min = Number(a.altura_min_cm || 0);
+  if (!min) return '';
+  var html = '<span class="badge">📏 mín. ' + min + ' cm</span>';
+  if (S.eu && Number(S.eu.altura_cm) && Number(S.eu.altura_cm) < min) html += '<span class="badge alerta">Você não pode</span>';
+  var baixos = S.d.pessoas.filter(function (p) { return Number(p.altura_cm) && Number(p.altura_cm) < min; });
+  if (baixos.length) html += '<span class="badge alerta" title="' + esc(baixos.map(function (p) { return p.nome; }).join(', ')) + '">⚠️ ' + plural(baixos.length, 'do grupo não pode', 'do grupo não podem') + '</span>';
+  return html;
+}
+
+function cardLocal(l) {
+  var n = (S.idx.atrPorLocal[l.id] || []).length;
+  return '<div class="card">' + foto('LOCAL', l, 'grande') +
+    '<div class="corpo"><h3>' + esc(l.nome) + '</h3>' +
+    '<div class="badges"><span class="badge ouro">' + (GRUPO_EMO[l.grupo] || '📍') + ' ' + esc(l.grupo) + '</span><span class="badge">📍 ' + esc(l.regiao) + '</span>' +
+    (l.tipo === 'PARQUE_AQUATICO' ? '<span class="badge">💦 Aquático</span>' : '') +
+    (l.dia_inteiro === 'SIM' ? '<span class="badge">☀️ Dia inteiro</span>' : '<span class="badge">🌙 Meio período</span>') + '</div>' +
+    '<p class="desc">' + esc(l.descricao) + '</p>' +
+    barraVotos('LOCAL', l.id) + resumoVotos('LOCAL', l.id) +
+    '<div class="acoes">' + (n ? '<button class="btn" data-acao="verLocal" data-id="' + esc(l.id) + '">Ver ' + plural(n, 'atração', 'atrações') + ' →</button>' : '') +
+    (l.site ? '<a class="btn sec" href="' + esc(l.site) + '" target="_blank" rel="noopener">Site oficial</a>' : '') + '</div>' +
+    '</div></div>';
+}
+
+/* ---------- abas ---------- */
+function vParques() {
+  var lista = locaisOrdenados(function (l) { return l.tipo === 'PARQUE' || l.tipo === 'PARQUE_AQUATICO'; });
+  return '<div class="titulo-sec"><h2>Quais parques vamos?</h2><span>' + plural(lista.length, 'parque', 'parques') + '</span></div>' +
+    '<div class="dica">Vote em cada parque. O roteiro coloca primeiro os parques com mais pontos (😍 = 2, 🙂 = 1, 🙅 = −1) e evita repetir parque enquanto houver opções. Depois toque em <b>Ver atrações</b> para escolher os brinquedos.</div>' +
+    lista.map(cardLocal).join('');
+}
+
+function vPasseios() {
+  var lista = locaisOrdenados(function (l) { return l.tipo === 'PASSEIO' || l.tipo === 'COMPRAS'; });
+  return '<div class="titulo-sec"><h2>NASA, Miami, Tampa e compras</h2></div>' +
+    '<div class="dica">Vote nos passeios e depois escolha o que fazer em cada um. O dia de Miami e a chegada em Tampa já estão no roteiro; a NASA concorre com os parques nos dias em Orlando.</div>' +
+    lista.map(cardLocal).join('');
+}
+
+function vAtracoes() {
+  var comAtr = locaisOrdenados(function (l) { return (S.idx.atrPorLocal[l.id] || []).length; });
+  if (!S.idx.local[S.local]) S.local = comAtr.length ? comAtr[0].id : '';
+  var l = S.idx.local[S.local];
+  var html = '<div class="chips">' + comAtr.map(function (x) {
+    return '<button class="chip' + (x.id === S.local ? ' on' : '') + '" data-acao="local" data-id="' + esc(x.id) + '">' + (GRUPO_EMO[x.grupo] || '📍') + ' ' + esc(x.nome.replace(/^(Universal|Disney's) /, '')) + '</button>';
+  }).join('') + '</div>';
+  if (!l) return html + '<div class="vazio"><b>🎢</b>Nenhuma atração cadastrada.</div>';
+
+  var todas = (S.idx.atrPorLocal[l.id] || []).slice();
+  var cats = [];
+  todas.forEach(function (a) { if (cats.indexOf(a.categoria) < 0) cats.push(a.categoria); });
+  if (S.cat && cats.indexOf(S.cat) < 0) S.cat = '';
+  html += '<div class="chips"><button class="chip' + (!S.cat ? ' on' : '') + '" data-acao="cat" data-cat="">Todas</button>' + cats.map(function (c) {
+    return '<button class="chip' + (S.cat === c ? ' on' : '') + '" data-acao="cat" data-cat="' + esc(c) + '">' + (CAT_EMO[c] || '') + ' ' + esc(c) + '</button>';
+  }).join('') + '</div>';
+
+  var lista = todas.filter(function (a) { return !S.cat || a.categoria === S.cat; })
+    .sort(function (a, b) { return Number(a.ordem_area) - Number(b.ordem_area) || (a.id < b.id ? -1 : 1); });
+  var votadas = todas.filter(function (a) { return agg('ATRACAO', a.id).meu; }).length;
+
+  html += '<div class="titulo-sec"><h2>' + esc(l.nome) + '</h2><span>você votou em ' + votadas + '/' + todas.length + '</span></div>';
+  var areaAtual = null;
+  lista.forEach(function (a) {
+    if (a.area !== areaAtual) { areaAtual = a.area; html += '<div class="area">📍 ' + esc(a.area) + '</div>'; }
+    html += '<div class="card"><div class="item">' + foto('ATRACAO', a, 'mini') +
+      '<div class="info"><h4>' + esc(a.nome) + '</h4>' +
+      '<div class="badges"><span class="badge">' + (CAT_EMO[a.categoria] || '') + ' ' + esc(a.categoria) + '</span>' + badgeAltura(a) + '</div>' +
+      (a.descricao ? '<p class="desc">' + esc(a.descricao) + '</p>' : '') +
+      barraVotos('ATRACAO', a.id, true) + resumoVotos('ATRACAO', a.id) + '</div></div></div>';
+  });
+  return html;
+}
+
+function vRoteiro() {
+  var linhas = S.d.roteiro || [];
+  var html = '<div class="titulo-sec"><h2>Roteiro da viagem</h2>' + (linhas.length ? '<span>gerado em ' + esc((linhas[0].gerado_em || '').slice(0, 16)) + '</span>' : '') + '</div>';
+  if (!linhas.length) {
+    html += '<div class="vazio"><b>🗓️</b>O roteiro ainda não foi gerado.<br>Quando todos votarem, o organizador gera na aba <b>Grupo</b>.</div>';
+    html += vDiasPlanejados();
+    return html;
+  }
+  var porDia = {};
+  var ordemDias = [];
+  linhas.forEach(function (r) {
+    if (!porDia[r.data]) { porDia[r.data] = []; ordemDias.push(r.data); }
+    porDia[r.data].push(r);
+  });
+  ordemDias.sort();
+  ordemDias.forEach(function (data) {
+    var rs = porDia[data].sort(function (a, b) { return Number(a.ordem) - Number(b.ordem); });
+    var cab = rs[0];
+    var itens = rs.slice(1);
+    var l = S.idx.local[cab.local_id];
+    html += '<div class="card dia"><div class="corpo"><div class="cab"><div><div class="data">' + esc(fmtData(data)) + '</div>' +
+      '<div class="local">' + esc(cab.nome) + '</div></div>' +
+      '<div class="badges" style="justify-content:flex-end"><span class="badge ouro">' + esc(TIPOS_DIA[cab.tipo] || cab.tipo) + '</span><span class="badge">📍 ' + esc(cab.cidade) + '</span></div></div>' +
+      (cab.alerta ? '<p class="desc">' + esc(cab.alerta) + '</p>' : '');
+    if (itens.length) {
+      var area = null;
+      itens.forEach(function (it) {
+        if (it.area !== area) { area = it.area; html += '<div class="subarea">' + esc(area) + '</div>'; }
+        html += '<div class="passo"><span class="n">' + esc(it.ordem) + '</span><div>' + esc(it.nome) +
+          (it.alerta ? '<span class="al">⚠️ ' + esc(it.alerta) + '</span>' : '') + '</div>' +
+          (Number(it.pontos) ? '<span class="p">' + esc(it.pontos) + ' pts</span>' : '') + '</div>';
+      });
+    } else if (l) {
+      html += '<p class="desc">Nenhuma atração com votos positivos ainda.</p>';
+    }
+    if (l) html += '<div class="acoes"><button class="btn sec peq" data-acao="verLocal" data-id="' + esc(l.id) + '">Ver todas as atrações</button></div>';
+    html += '</div></div>';
+  });
+
+  var extras = (S.idx.atrPorLocal['ORLX'] || []).filter(function (a) { return agg('ATRACAO', a.id).pts > 0; })
+    .sort(function (a, b) { return agg('ATRACAO', b.id).pts - agg('ATRACAO', a.id).pts; });
+  if (extras.length) {
+    html += '<div class="card"><div class="corpo"><h3>🌙 Para as noites livres em Orlando</h3>' + extras.map(function (a, i) {
+      return '<div class="passo"><span class="n">' + (i + 1) + '</span><div>' + esc(a.nome) + '</div><span class="p">' + agg('ATRACAO', a.id).pts + ' pts</span></div>';
+    }).join('') + '</div></div>';
+  }
+  return html;
+}
+
+function vDiasPlanejados() {
+  var dias = S.d.dias.slice().sort(function (a, b) { return a.data < b.data ? -1 : 1; });
+  return '<div class="card"><div class="corpo"><h3>Dias da viagem</h3>' + dias.map(function (d) {
+    var l = S.idx.local[d.local_id];
+    return '<div class="passo"><span class="n">' + paraData(d.data).getDate() + '</span><div><b style="text-transform:capitalize">' + esc(fmtData(d.data)) + '</b><br>' +
+      esc(TIPOS_DIA[d.tipo] || d.tipo) + ' · ' + esc(d.cidade) + (l ? ' · ' + esc(l.nome) : (d.tipo === 'PARQUE' ? ' · decidido pelos votos' : '')) +
+      (d.travado === 'SIM' ? ' 🔒' : '') + '</div></div>';
+  }).join('') + '</div></div>';
+}
+
+function vGrupo() {
+  var html = '<div class="titulo-sec"><h2>O grupo</h2><span>' + plural(S.d.votos.length, 'voto', 'votos') + ' no total</span></div>';
+
+  // Ranking
+  var rank = S.d.locais.filter(function (l) { return l.dia_inteiro === 'SIM'; }).map(function (l) { return { l: l, a: agg('LOCAL', l.id) }; })
+    .sort(function (x, y) { return y.a.pts - x.a.pts || Number(x.l.ordem) - Number(y.l.ordem); });
+  var max = Math.max(1, rank.length ? rank[0].a.pts : 1);
+  html += '<div class="card"><div class="corpo"><h3>🏆 Ranking dos parques e passeios</h3><table class="tabela">' + rank.map(function (r, i) {
+    var pct = Math.max(0, Math.round(r.a.pts / max * 100));
+    return '<tr><td>' + (i + 1) + '. ' + esc(r.l.nome) + '<div class="barra"><i style="width:' + pct + '%"></i></div></td><td class="num">' + r.a.pts + ' pts<br><span style="font-weight:500;color:var(--suave);font-size:12px">😍' + r.a.q + ' 🙂' + r.a.t + ' 🙅' + r.a.n + '</span></td></tr>';
+  }).join('') + '</table></div></div>';
+
+  // Participação
+  html += '<div class="card"><div class="corpo"><h3>🗳️ Quem já votou</h3><table class="tabela">' + S.d.pessoas.map(function (p) {
+    var n = S.idx.votosPessoa[p.id] || 0;
+    return '<tr><td>' + esc(p.nome) + (p.altura_cm ? ' <span style="color:var(--suave);font-size:12px">· ' + esc(p.altura_cm) + ' cm</span>' : '') + '</td><td class="num">' + (n ? '✅ ' + plural(n, 'voto', 'votos') : '⏳ ainda não') + '</td></tr>';
+  }).join('') + (S.d.pessoas.length ? '' : '<tr><td>Ninguém entrou ainda.</td></tr>') + '</table></div></div>';
+
+  // Minha altura
+  if (S.eu) {
+    html += '<div class="card"><div class="corpo"><h3>📏 Minha altura</h3><p class="desc">Usada para avisar quais brinquedos você não pode ir.</p>' +
+      '<div class="grade2"><div class="campo"><input id="minhaAltura" type="number" inputmode="numeric" placeholder="ex.: 135" value="' + esc(S.eu.altura_cm || '') + '"></div>' +
+      '<div><button class="btn largo" data-acao="salvarAltura">Salvar</button></div></div></div></div>';
+  }
+
+  // Organizador
+  html += '<div class="card"><div class="corpo"><h3>🔑 Área do organizador</h3>';
+  if (!S.adminPin) {
+    html += '<p class="desc">Para travar os dias com ingresso comprado, mudar a ordem e gerar o roteiro.</p>' +
+      '<div class="grade2"><div class="campo"><input id="pinAdmin" type="password" inputmode="numeric" placeholder="PIN de 6 números"></div>' +
+      '<div><button class="btn largo" data-acao="adminEntrar">Entrar</button></div></div>';
+  } else {
+    html += '<button class="btn ouro largo" data-acao="gerar">✨ Gerar roteiro com os votos</button>' +
+      '<p class="desc" style="margin-top:10px">Dias marcados como <b>fixo</b> mantêm o local escolhido (use para os ingressos já comprados). Nos outros, deixe <b>Automático</b> e o sistema escolhe pelos votos.</p>';
+    var dias = S.d.dias.slice().sort(function (a, b) { return a.data < b.data ? -1 : 1; });
+    var opLocais = locaisOrdenados(function (l) { return l.dia_inteiro === 'SIM'; });
+    dias.forEach(function (d) {
+      var id = d.data;
+      html += '<div class="linha-dia"><div class="data">' + esc(fmtData(d.data)) + '</div>' +
+        '<div class="grade2"><div class="campo"><label>Tipo do dia</label><select id="dt_' + id + '">' + Object.keys(TIPOS_DIA).map(function (t) {
+          return '<option value="' + t + '"' + (d.tipo === t ? ' selected' : '') + '>' + TIPOS_DIA[t] + '</option>';
+        }).join('') + '</select></div>' +
+        '<div class="campo"><label>Cidade base</label><select id="dc_' + id + '">' + ['Tampa', 'Orlando', 'Miami'].map(function (c) {
+          return '<option' + (d.cidade === c ? ' selected' : '') + '>' + c + '</option>';
+        }).join('') + '</select></div></div>' +
+        '<div class="campo"><label>Local</label><select id="dl_' + id + '"><option value="">Automático (pelos votos)</option>' + opLocais.map(function (l) {
+          return '<option value="' + esc(l.id) + '"' + (d.local_id === l.id ? ' selected' : '') + '>' + esc(l.nome) + '</option>';
+        }).join('') + '</select></div>' +
+        '<label class="check"><input type="checkbox" id="dx_' + id + '"' + (d.travado === 'SIM' ? ' checked' : '') + '> 🔒 Fixo (ingresso comprado / data definida)</label>' +
+        '<div class="campo"><label>Observação</label><input id="do_' + id + '" value="' + esc(d.observacao) + '"></div>' +
+        '<button class="btn sec peq" data-acao="salvarDia" data-data="' + esc(d.data) + '">Salvar dia</button></div>';
+    });
+    html += '<h3 style="margin-top:18px">👥 Pessoas</h3>';
+    S.d.pessoas.forEach(function (p) {
+      html += '<div class="linha-dia"><div class="grade2"><div class="campo"><label>Nome</label><input id="pn_' + p.id + '" value="' + esc(p.nome) + '"></div>' +
+        '<div class="campo"><label>Altura (cm)</label><input id="pa_' + p.id + '" type="number" inputmode="numeric" value="' + esc(p.altura_cm) + '"></div></div>' +
+        '<div class="acoes" style="margin-top:0"><button class="btn sec peq" data-acao="salvarPessoaAdm" data-id="' + p.id + '">Salvar</button>' +
+        '<button class="btn sec peq" data-acao="resetPin" data-id="' + p.id + '">Zerar PIN</button>' +
+        '<button class="btn perigo peq" data-acao="excluirPessoa" data-id="' + p.id + '">Excluir</button></div></div>';
+    });
+  }
+  html += '</div></div>';
+  return html;
+}
+
+/* ===================== MODAL (login) ===================== */
+function renderModal() {
+  var m = document.getElementById('modal');
+  if (!S.modal) { m.className = ''; m.innerHTML = ''; return; }
+  var html = '<div class="folha">';
+  if (S.modal.etapa === 'lista') {
+    html += '<h2>Quem é você? 👋</h2><p>Escolha seu nome para votar. Cada pessoa vota no próprio celular.</p>' +
+      '<div class="grade-pessoas">' + S.d.pessoas.map(function (p) {
+        return '<button data-acao="escolherPessoa" data-id="' + esc(p.id) + '">' + esc(p.nome) + '</button>';
+      }).join('') + '</div>' +
+      '<button class="btn ouro largo" data-acao="novo">➕ Sou novo aqui</button>' +
+      '<button class="btn sec largo" style="margin-top:8px" data-acao="fecharModal">Só quero olhar</button>';
+  } else if (S.modal.etapa === 'pin') {
+    var p = S.modal.pessoa;
+    html += '<h2>' + esc(p.nome) + '</h2><p>' + (p.tem_pin ? 'Digite seu PIN de 4 números.' : 'Crie um PIN de 4 números para proteger seus votos.') + '</p>' +
+      '<div class="campo"><input id="pinEu" class="pin" type="password" inputmode="numeric" maxlength="4" autocomplete="off"></div>' +
+      '<button class="btn largo" data-acao="entrar">Entrar</button>' +
+      '<button class="btn sec largo" style="margin-top:8px" data-acao="abrirLogin">Voltar</button>';
+  } else if (S.modal.etapa === 'novo') {
+    html += '<h2>Primeiro acesso</h2><p>Cadastre seu nome. A altura é opcional e serve para avisar quais brinquedos você não pode ir.</p>' +
+      '<div class="campo"><label>Nome</label><input id="novoNome" maxlength="30" placeholder="Como a família te chama"></div>' +
+      '<div class="grade2"><div class="campo"><label>PIN (4 números)</label><input id="novoPin" class="pin" type="password" inputmode="numeric" maxlength="4"></div>' +
+      '<div class="campo"><label>Altura (cm)</label><input id="novoAlt" type="number" inputmode="numeric" placeholder="opcional"></div></div>' +
+      '<button class="btn largo" data-acao="cadastrar">Cadastrar e entrar</button>' +
+      '<button class="btn sec largo" style="margin-top:8px" data-acao="abrirLogin">Voltar</button>';
+  }
+  html += '</div>';
+  m.innerHTML = html;
+  m.className = 'aberto';
+  var foco = m.querySelector('input');
+  if (foco) setTimeout(function () { foco.focus(); }, 50);
+}
+
+function entrarComo(p, pin) {
+  S.eu = { id: p.id, nome: p.nome, altura_cm: p.altura_cm, pin: pin };
+  salvarSessao({ id: p.id, pin: pin });
+  S.modal = null;
+  indexar();
+  render();
+  toast('Bem-vindo(a), ' + p.nome + '! Agora é só votar.');
+}
+
+/* ===================== AÇÕES ===================== */
+function votar(tipo, id, v) {
+  if (!S.eu) { S.modal = { etapa: 'lista' }; renderModal(); return; }
+  var atual = agg(tipo, id).meu;
+  var novo = atual === v ? 0 : v;
+  var antes = S.d.votos.slice();
+  S.d.votos = S.d.votos.filter(function (x) { return !(x.pessoa_id === S.eu.id && x.tipo_item === tipo && x.item_id === id); });
+  if (novo) S.d.votos.push({ pessoa_id: S.eu.id, tipo_item: tipo, item_id: id, valor: String(novo) });
+  indexar();
+  render();
+  run('api_votar', S.eu.id, S.eu.pin, tipo, id, novo).then(function (r) {
+    if (!r.ok) {
+      S.d.votos = antes; indexar(); render();
+      toast(r.erro, true);
+      if (/Sessão/.test(r.erro)) { salvarSessao(null); S.eu = null; S.modal = { etapa: 'lista' }; indexar(); render(); }
+    }
+  }).catch(function (e) {
+    S.d.votos = antes; indexar(); render();
+    toast('Sem conexão: voto não salvo.', true);
+  });
+}
+
+function admin(acao, payload) {
+  return run('api_admin', S.adminPin, acao, payload || {}).then(function (r) {
+    if (!r.ok) throw new Error(r.erro);
+    return r;
+  });
+}
+
+document.addEventListener('click', function (e) {
+  var b = e.target.closest('[data-acao]');
+  if (!b) return;
+  var acao = b.getAttribute('data-acao');
+  var id = b.getAttribute('data-id');
+
+  if (acao === 'votar') return votar(b.getAttribute('data-tipo'), id, Number(b.getAttribute('data-v')));
+  if (acao === 'aba') return irPara(b.getAttribute('data-aba'));
+  if (acao === 'verLocal') { S.local = id; S.cat = ''; return irPara('atracoes'); }
+  if (acao === 'local') { S.local = id; S.cat = ''; render(); return window.scrollTo(0, 0); }
+  if (acao === 'cat') { S.cat = b.getAttribute('data-cat'); return render(); }
+  if (acao === 'recarregar') { location.reload(); return; }
+  if (acao === 'sair') { salvarSessao(null); S.eu = null; S.adminPin = ''; indexar(); S.modal = { etapa: 'lista' }; return render(); }
+  if (acao === 'abrirLogin') { S.modal = { etapa: 'lista' }; return renderModal(); }
+  if (acao === 'fecharModal') { S.modal = null; return renderModal(); }
+  if (acao === 'novo') { S.modal = { etapa: 'novo' }; return renderModal(); }
+  if (acao === 'escolherPessoa') {
+    S.modal = { etapa: 'pin', pessoa: S.d.pessoas.find(function (p) { return p.id === id; }) };
+    return renderModal();
+  }
+
+  if (acao === 'entrar') {
+    var pin = document.getElementById('pinEu').value.trim();
+    var p = S.modal.pessoa;
+    b.disabled = true;
+    return run('api_login', p.id, pin).then(function (r) {
+      b.disabled = false;
+      if (!r.ok) return toast(r.erro, true);
+      p.tem_pin = true;
+      entrarComo(r.pessoa, pin);
+    }).catch(function () { b.disabled = false; toast('Sem conexão.', true); });
+  }
+
+  if (acao === 'cadastrar') {
+    var nome = document.getElementById('novoNome').value.trim();
+    var npin = document.getElementById('novoPin').value.trim();
+    var alt = document.getElementById('novoAlt').value.trim();
+    b.disabled = true;
+    return run('api_cadastrar', nome, npin, alt).then(function (r) {
+      b.disabled = false;
+      if (!r.ok) return toast(r.erro, true);
+      S.d.pessoas.push(r.pessoa);
+      entrarComo(r.pessoa, npin);
+    }).catch(function () { b.disabled = false; toast('Sem conexão.', true); });
+  }
+
+  if (acao === 'salvarAltura') {
+    var h = document.getElementById('minhaAltura').value.trim();
+    return run('api_atualizarAltura', S.eu.id, S.eu.pin, h).then(function (r) {
+      if (!r.ok) return toast(r.erro, true);
+      S.eu.altura_cm = h.replace(/\D/g, '');
+      var p2 = S.d.pessoas.find(function (x) { return x.id === S.eu.id; });
+      if (p2) p2.altura_cm = S.eu.altura_cm;
+      render();
+      toast('Altura salva.');
+    });
+  }
+
+  if (acao === 'adminEntrar') {
+    S.adminPin = document.getElementById('pinAdmin').value.trim();
+    return admin('checar').then(function () { render(); toast('Área do organizador liberada.'); })
+      .catch(function (err) { S.adminPin = ''; toast(String(err.message || err), true); });
+  }
+
+  if (acao === 'salvarDia') {
+    var data = b.getAttribute('data-data');
+    var payload = {
+      data: data,
+      tipo: document.getElementById('dt_' + data).value,
+      cidade: document.getElementById('dc_' + data).value,
+      local_id: document.getElementById('dl_' + data).value,
+      travado: document.getElementById('dx_' + data).checked,
+      observacao: document.getElementById('do_' + data).value
+    };
+    if (payload.travado && !payload.local_id) return toast('Para fixar o dia, escolha o local.', true);
+    b.disabled = true;
+    return admin('salvarDia', payload).then(function (r) {
+      S.d.dias = r.dias; b.disabled = false; render(); toast('Dia salvo.');
+    }).catch(function (err) { b.disabled = false; toast(String(err.message || err), true); });
+  }
+
+  if (acao === 'gerar') {
+    b.disabled = true; b.textContent = 'Gerando…';
+    return admin('gerarRoteiro').then(function (r) {
+      S.d.roteiro = r.roteiro; S.aba = 'roteiro'; render(); window.scrollTo(0, 0); toast('Roteiro gerado!');
+    }).catch(function (err) { b.disabled = false; b.textContent = '✨ Gerar roteiro com os votos'; toast(String(err.message || err), true); });
+  }
+
+  if (acao === 'salvarPessoaAdm' || acao === 'resetPin') {
+    var dados = { id: id, nome: document.getElementById('pn_' + id).value, altura_cm: document.getElementById('pa_' + id).value, resetPin: acao === 'resetPin' };
+    return admin('salvarPessoa', dados).then(function () {
+      toast(acao === 'resetPin' ? 'PIN zerado: a pessoa cria um novo ao entrar.' : 'Pessoa salva.');
+      return recarregar();
+    }).catch(function (err) { toast(String(err.message || err), true); });
+  }
+
+  if (acao === 'excluirPessoa') {
+    var alvo = S.d.pessoas.find(function (x) { return x.id === id; });
+    if (!confirm('Excluir ' + (alvo ? alvo.nome : 'pessoa') + ' e todos os votos dela?')) return;
+    return admin('excluirPessoa', { id: id }).then(function () {
+      if (S.eu && S.eu.id === id) { salvarSessao(null); S.eu = null; }
+      toast('Pessoa excluída.');
+      return recarregar();
+    }).catch(function (err) { toast(String(err.message || err), true); });
+  }
+});
+
+document.addEventListener('keydown', function (e) {
+  if (e.key !== 'Enter') return;
+  var alvo = e.target && e.target.id;
+  var mapa = { pinEu: 'entrar', novoAlt: 'cadastrar', novoPin: 'cadastrar', pinAdmin: 'adminEntrar' };
+  if (mapa[alvo]) {
+    var btn = document.querySelector('[data-acao="' + mapa[alvo] + '"]');
+    if (btn) btn.click();
+  }
+});
+
+/* ===================== FOTOS (Wikimedia Commons, licença livre) ===================== */
+var filaFotos = [];
+var buscando = 0;
+var observador = ('IntersectionObserver' in window) ? new IntersectionObserver(function (ents) {
+  ents.forEach(function (en) {
+    if (en.isIntersecting) { observador.unobserve(en.target); enfileirar(en.target); }
+  });
+}, { rootMargin: '300px' }) : null;
+
+function observarFotos() {
+  document.querySelectorAll('.foto.pend').forEach(function (el) {
+    var k = el.getAttribute('data-k');
+    if (S.tentou[k]) return;
+    if (observador) observador.observe(el); else enfileirar(el);
+  });
+}
+function enfileirar(el) {
+  var k = el.getAttribute('data-k');
+  if (S.tentou[k]) return;
+  S.tentou[k] = true;
+  filaFotos.push({ k: k, tipo: el.getAttribute('data-tipo'), id: el.getAttribute('data-id'), q: el.getAttribute('data-q'), nome: el.getAttribute('data-nome') });
+  processarFila();
+}
+function processarFila() {
+  while (buscando < 3 && filaFotos.length) {
+    var job = filaFotos.shift();
+    buscando++;
+    buscarFoto(job.q).then(function (job) {
+      return function (f) {
+        if (f || job.q === job.nome) return f;
+        return buscarFoto(job.nome);
+      };
+    }(job)).then(function (job) {
+      return function (f) {
+        if (f) {
+          S.fotos[job.k] = f;
+          aplicarFoto(job.k, f);
+          google.script.run.api_salvarFoto(job.tipo, job.id, f.url, f.cred);
+        }
+      };
+    }(job)).catch(function () {}).then(function () { buscando--; processarFila(); });
+  }
+}
+function buscarFoto(q) {
+  var url = 'https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*' +
+    '&generator=search&gsrnamespace=6&gsrlimit=4&gsrsearch=' + encodeURIComponent(q + ' filetype:bitmap') +
+    '&prop=imageinfo&iiprop=url&iiurlwidth=640';
+  return fetch(url).then(function (r) { return r.json(); }).then(function (j) {
+    var pages = j && j.query && j.query.pages;
+    if (!pages) return null;
+    var lista = Object.keys(pages).map(function (k) { return pages[k]; }).sort(function (a, b) { return (a.index || 0) - (b.index || 0); });
+    for (var i = 0; i < lista.length; i++) {
+      var ii = lista[i].imageinfo && lista[i].imageinfo[0];
+      if (ii && ii.thumburl && /\.(jpe?g|png|webp)$/i.test(ii.url)) return { url: ii.thumburl, cred: ii.descriptionurl };
+    }
+    return null;
+  });
+}
+function aplicarFoto(k, f) {
+  document.querySelectorAll('.foto.pend[data-k="' + k.replace(/"/g, '') + '"]').forEach(function (el) {
+    el.classList.remove('pend');
+    el.innerHTML = '<img src="' + esc(f.url) + '" alt="' + esc(el.getAttribute('data-nome')) + '" loading="lazy">' +
+      '<a class="cred" href="' + esc(f.cred) + '" target="_blank" rel="noopener">Foto: Wikimedia</a>';
+  });
+}
+
+iniciar();
+</script>
+</body>
+</html>
