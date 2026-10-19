@@ -404,15 +404,36 @@ function montarRoteiro_(dias, locais, atracoes, pessoas, votos, carimbo) {
  * ========================================================= */
 
 function ss_() {
+  let ativa = null;
+  try { ativa = SpreadsheetApp.getActiveSpreadsheet(); } catch (e) { ativa = null; }
+  if (ativa && ativa.getSheetByName(ABA.CONFIG)) return ativa;
   const id = PropertiesService.getScriptProperties().getProperty('SS_ID');
-  if (id) return SpreadsheetApp.openById(id);
-  return SpreadsheetApp.getActiveSpreadsheet();
+  if (id) {
+    try {
+      const salva = SpreadsheetApp.openById(id);
+      if (salva.getSheetByName(ABA.CONFIG) || !ativa) return salva;
+    } catch (e) { /* ID antigo ou sem acesso: segue com a planilha ativa */ }
+  }
+  if (ativa) return ativa;
+  throw new Error('Este script não está vinculado a uma planilha. Crie o projeto pela planilha (Extensões → Apps Script).');
 }
 
 function aba_(nome) {
-  const sh = ss_().getSheetByName(nome);
-  if (!sh) throw new Error('Aba "' + nome + '" não existe. Rode setup() primeiro.');
+  const planilha = ss_();
+  const sh = planilha.getSheetByName(nome);
+  if (!sh) throw new Error('Aba "' + nome + '" não existe na planilha "' + planilha.getName() + '". Rode setup() no editor e depois crie uma nova versão da implantação.');
   return sh;
+}
+
+/** Diagnóstico: rode no editor e veja o resultado em "Registro de execução". */
+function diagnostico() {
+  let ativa = null;
+  try { ativa = SpreadsheetApp.getActiveSpreadsheet(); } catch (e) { ativa = null; }
+  Logger.log('Planilha ativa: ' + (ativa ? ativa.getName() + ' (' + ativa.getId() + ')' : 'nenhuma'));
+  Logger.log('SS_ID salvo: ' + PropertiesService.getScriptProperties().getProperty('SS_ID'));
+  const usada = ss_();
+  Logger.log('Planilha usada pelo app: ' + usada.getName() + ' (' + usada.getId() + ')');
+  Logger.log('Abas: ' + usada.getSheets().map(function (s) { return s.getName(); }).join(', '));
 }
 
 function ler_(nome) {
