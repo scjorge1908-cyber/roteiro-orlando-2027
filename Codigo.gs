@@ -252,6 +252,87 @@ function api_salvarFoto(tipoItem, itemId, url, credito) {
   }
 }
 
+/**
+ * Busca fotos no Wikimedia Commons pelo servidor (o navegador do Apps Script bloqueia a busca direta).
+ * itens: [{tipo:'LOCAL'|'ATRACAO', id}] — no máximo 12 por chamada.
+ * Retorna { ok, fotos: { 'TIPO:ID': {url, cred} }, sem: ['TIPO:ID', ...] }
+ */
+function api_buscarFotos(itens) {
+  try {
+    itens = (itens || []).slice(0, 12);
+    const tabelas = { LOCAL: ler_(ABA.LOCAIS), ATRACAO: ler_(ABA.ATRACOES) };
+    const fotos = {};
+    const sem = [];
+    let pendentes = [];
+
+    itens.forEach(function (it) {
+      const lista = tabelas[it.tipo];
+      if (!lista) return;
+      const r = lista.find(function (x) { return x.id === it.id; });
+      if (!r) return;
+      const k = it.tipo + ':' + it.id;
+      if (r.foto_url) { fotos[k] = { url: r.foto_url, cred: r.foto_credito }; return; }
+      pendentes.push({ k: k, tipo: it.tipo, id: it.id, termos: [r.foto_busca || r.nome, r.nome] });
+    });
+
+    for (let rodada = 0; rodada < 2 && pendentes.length; rodada++) {
+      const pedidos = pendentes.map(function (p) {
+        return { url: urlCommons_(p.termos[rodada] || p.termos[0]), muteHttpExceptions: true };
+      });
+      const respostas = UrlFetchApp.fetchAll(pedidos);
+      const faltam = [];
+      pendentes.forEach(function (p, i) {
+        const f = extrairFotoCommons_(respostas[i]);
+        if (f) {
+          fotos[p.k] = f;
+          gravarFoto_(p.tipo, p.id, f.url, f.cred);
+        } else {
+          faltam.push(p);
+        }
+      });
+      pendentes = faltam.filter(function (p) { return p.termos[1] && p.termos[1] !== p.termos[0]; });
+    }
+    itens.forEach(function (it) {
+      const k = it.tipo + ':' + it.id;
+      if (!fotos[k]) sem.push(k);
+    });
+    return { ok: true, fotos: fotos, sem: sem };
+  } catch (e) {
+    return { ok: false, erro: String(e.message || e) };
+  }
+}
+
+function urlCommons_(termo) {
+  return 'https://commons.wikimedia.org/w/api.php?action=query&format=json' +
+    '&generator=search&gsrnamespace=6&gsrlimit=4&gsrsearch=' + encodeURIComponent(termo + ' filetype:bitmap') +
+    '&prop=imageinfo&iiprop=url&iiurlwidth=640';
+}
+
+function extrairFotoCommons_(resp) {
+  try {
+    if (resp.getResponseCode() !== 200) return null;
+    const j = JSON.parse(resp.getContentText());
+    const pages = j && j.query && j.query.pages;
+    if (!pages) return null;
+    const lista = Object.keys(pages).map(function (k) { return pages[k]; })
+      .sort(function (a, b) { return (a.index || 0) - (b.index || 0); });
+    for (let i = 0; i < lista.length; i++) {
+      const ii = lista[i].imageinfo && lista[i].imageinfo[0];
+      if (ii && ii.thumburl && /\.(jpe?g|png|webp)$/i.test(ii.url)) return { url: ii.thumburl, cred: ii.descriptionurl };
+    }
+  } catch (e) { /* resposta inválida */ }
+  return null;
+}
+
+function gravarFoto_(tipoItem, itemId, url, credito) {
+  const nomeAba = tipoItem === 'LOCAL' ? ABA.LOCAIS : ABA.ATRACOES;
+  const cab = CABECALHOS[nomeAba];
+  const linhas = ler_(nomeAba);
+  const i = linhas.findIndex(function (r) { return r.id === itemId; });
+  if (i < 0 || linhas[i].foto_url !== '') return;
+  aba_(nomeAba).getRange(i + 2, cab.indexOf('foto_url') + 1, 1, 2).setValues([[url, String(credito || '')]]);
+}
+
 /** Ações do organizador (exigem o PIN de 6 dígitos da aba Config). */
 function api_admin(pinAdmin, acao, payload) {
   if (String(pinAdmin) !== getConfig_('pin_admin')) return { ok: false, erro: 'PIN do organizador incorreto.' };

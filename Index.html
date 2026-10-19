@@ -737,11 +737,7 @@ document.addEventListener('keydown', function (e) {
 /* ===================== FOTOS (Wikimedia Commons, licença livre) ===================== */
 var filaFotos = [];
 var buscando = 0;
-var observador = ('IntersectionObserver' in window) ? new IntersectionObserver(function (ents) {
-  ents.forEach(function (en) {
-    if (en.isIntersecting) { observador.unobserve(en.target); enfileirar(en.target); }
-  });
-}, { rootMargin: '300px' }) : null;
+var observador = null; // as fotos são enfileiradas na ordem da tela (o iframe do Apps Script não dispara o observer de forma confiável)
 
 function observarFotos() {
   document.querySelectorAll('.foto.pend').forEach(function (el) {
@@ -758,24 +754,18 @@ function enfileirar(el) {
   processarFila();
 }
 function processarFila() {
-  while (buscando < 3 && filaFotos.length) {
-    var job = filaFotos.shift();
-    buscando++;
-    buscarFoto(job.q).then(function (job) {
-      return function (f) {
-        if (f || job.q === job.nome) return f;
-        return buscarFoto(job.nome);
-      };
-    }(job)).then(function (job) {
-      return function (f) {
-        if (f) {
-          S.fotos[job.k] = f;
-          aplicarFoto(job.k, f);
-          google.script.run.api_salvarFoto(job.tipo, job.id, f.url, f.cred);
-        }
-      };
-    }(job)).catch(function () {}).then(function () { buscando--; processarFila(); });
-  }
+  // A busca é feita pelo servidor (Apps Script), em lotes de até 12 fotos.
+  if (buscando || !filaFotos.length) return;
+  var lote = filaFotos.splice(0, 12);
+  buscando = 1;
+  run('api_buscarFotos', lote.map(function (j) { return { tipo: j.tipo, id: j.id }; })).then(function (r) {
+    if (r && r.ok) {
+      Object.keys(r.fotos || {}).forEach(function (k) {
+        S.fotos[k] = r.fotos[k];
+        aplicarFoto(k, r.fotos[k]);
+      });
+    }
+  }).catch(function () {}).then(function () { buscando = 0; processarFila(); });
 }
 function buscarFoto(q) {
   var url = 'https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*' +
