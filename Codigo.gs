@@ -444,15 +444,33 @@ function gerarRoteiro_() {
 
 /** Lógica pura (sem planilha) — também usada nos testes. Retorna linhas no formato da aba Roteiro. */
 function montarRoteiro_(dias, locais, atracoes, pessoas, votos, carimbo) {
-  const pontos = {};
-  const temVoto = {};
+  /*
+   * Regra democrática: cada pessoa vale 1.
+   *   a favor = 😍 Quero muito + 🙂 Tanto faz   |   contra = 🙅 Não quero
+   *   saldo = a favor − contra  (é o número mostrado como "pontos")
+   * Ordem: maior saldo → mais 😍 → menos 🙅.
+   * Empate de votos: vai primeiro o que está mais perto de onde a família está (área vizinha no parque).
+   */
+  const cont = {};
   votos.forEach(function (v) {
     const k = v.tipo_item + ':' + v.item_id;
-    pontos[k] = (pontos[k] || 0) + Number(v.valor || 0);
-    temVoto[k] = true;
+    const c = cont[k] || (cont[k] = { quero: 0, tanto: 0, nao: 0 });
+    const val = Number(v.valor);
+    if (val === 2) c.quero++; else if (val === 1) c.tanto++; else if (val === -1) c.nao++;
   });
-  const ptsLocal = function (id) { return pontos['LOCAL:' + id] || 0; };
-  const ptsAtr = function (id) { return pontos['ATRACAO:' + id] || 0; };
+  const placar = function (tipo, id) {
+    const c = cont[tipo + ':' + id] || { quero: 0, tanto: 0, nao: 0 };
+    const favor = c.quero + c.tanto;
+    return { favor: favor, contra: c.nao, quero: c.quero, saldo: favor - c.nao };
+  };
+  const compararPlacar = function (a, b) {
+    if (a.saldo !== b.saldo) return b.saldo - a.saldo;
+    if (a.quero !== b.quero) return b.quero - a.quero;
+    return a.contra - b.contra;
+  };
+  const mesmoNivel = function (a, b) { return a.saldo === b.saldo && a.quero === b.quero && a.contra === b.contra; };
+  const entra = function (p) { return p.favor > 0 && p.saldo >= 0; };
+
   const localPorId = {};
   locais.forEach(function (l) { localPorId[l.id] = l; });
 
@@ -469,16 +487,17 @@ function montarRoteiro_(dias, locais, atracoes, pessoas, votos, carimbo) {
     if (!travado && TIPOS_AUTOMATICOS.indexOf(d.tipo) >= 0) {
       const regioes = REGIOES_POR_CIDADE[d.cidade] || [d.cidade];
       const candidatos = locais.filter(function (l) {
-        return l.dia_inteiro === 'SIM' && regioes.indexOf(l.regiao) >= 0 && ptsLocal(l.id) >= 0;
+        return l.dia_inteiro === 'SIM' && regioes.indexOf(l.regiao) >= 0 && placar('LOCAL', l.id).saldo >= 0;
       }).sort(function (a, b) {
         // Máximo de parques diferentes: 1º os votados ainda não usados, 2º os sem voto ainda não usados, por último repetir.
-        const nivel = function (l) { return (usados[l.id] || 0) > 0 ? 2 : (ptsLocal(l.id) > 0 ? 0 : 1); };
-        const na = nivel(a), nb = nivel(b);
+        const pa = placar('LOCAL', a.id), pb = placar('LOCAL', b.id);
+        const nivel = function (l, p) { return (usados[l.id] || 0) > 0 ? 2 : (entra(p) ? 0 : 1); };
+        const na = nivel(a, pa), nb = nivel(b, pb);
         if (na !== nb) return na - nb;
         const ua = usados[a.id] || 0, ub = usados[b.id] || 0;
         if (ua !== ub) return ua - ub;
-        const pa = ptsLocal(a.id), pb = ptsLocal(b.id);
-        if (pa !== pb) return pb - pa;
+        const c = compararPlacar(pa, pb);
+        if (c !== 0) return c;
         return Number(a.ordem || 99) - Number(b.ordem || 99);
       });
       localId = candidatos.length ? candidatos[0].id : '';
@@ -486,36 +505,43 @@ function montarRoteiro_(dias, locais, atracoes, pessoas, votos, carimbo) {
     }
 
     const local = localPorId[localId];
-    saida.push([d.data, '0', d.cidade, d.tipo, localId || '', '', '', local ? local.nome : (TIPOS_AUTOMATICOS.indexOf(d.tipo) >= 0 ? 'A definir pela votação' : 'Dia livre'), local ? String(ptsLocal(localId)) : '', d.observacao || '', carimbo]);
+    saida.push([d.data, '0', d.cidade, d.tipo, localId || '', '', '', local ? local.nome : (TIPOS_AUTOMATICOS.indexOf(d.tipo) >= 0 ? 'A definir pela votação' : 'Dia livre'), local ? String(placar('LOCAL', localId).saldo) : '', d.observacao || '', carimbo]);
     if (!local) return;
 
     const lista = atracoes.filter(function (a) { return a.local_id === localId; });
-    const alguemVotou = lista.some(function (a) { return temVoto['ATRACAO:' + a.id]; });
-    // Ao vivo: entram só as atrações com saldo positivo de votos.
-    let escolhidas = lista.filter(function (a) {
-      const p = ptsAtr(a.id);
-      return alguemVotou ? p > 0 : false;
-    });
 
+    // Áreas do parque em ordem de caminhada (o catálogo segue a volta real do parque).
     const areas = [];
     lista.slice().sort(function (a, b) { return Number(a.ordem_area) - Number(b.ordem_area); }).forEach(function (a) {
       if (areas.indexOf(a.area) < 0) areas.push(a.area);
     });
-    let inicio = 0;
-    if (alguemVotou && escolhidas.length) {
-      const top = escolhidas.slice().sort(function (a, b) { return ptsAtr(b.id) - ptsAtr(a.id); })[0];
-      inicio = Math.max(0, areas.indexOf(top.area));
-    }
-    const ordemAreas = areas.slice(inicio).concat(areas.slice(0, inicio));
+    const distancia = function (areaA, areaB) {
+      const ia = areas.indexOf(areaA), ib = areas.indexOf(areaB);
+      if (ia < 0 || ib < 0) return 99;
+      const dd = Math.abs(ia - ib);
+      return Math.min(dd, areas.length - dd);
+    };
 
-    // Prioridade: a atração mais votada primeiro; empate → mesma área seguida, depois nome.
-    escolhidas = escolhidas.sort(function (a, b) {
-      const pa = ptsAtr(a.id), pb = ptsAtr(b.id);
-      if (pa !== pb) return pb - pa;
-      const ia = ordemAreas.indexOf(a.area), ib = ordemAreas.indexOf(b.area);
-      if (ia !== ib) return ia - ib;
-      return a.nome < b.nome ? -1 : 1;
-    });
+    // Só entram atrações que a maioria de quem votou quer.
+    const restantes = lista.filter(function (a) { return entra(placar('ATRACAO', a.id)); });
+    const escolhidas = [];
+    let areaAtual = areas[0];
+    while (restantes.length) {
+      restantes.sort(function (a, b) { return compararPlacar(placar('ATRACAO', a.id), placar('ATRACAO', b.id)); });
+      const topo = placar('ATRACAO', restantes[0].id);
+      const empatadas = restantes.filter(function (a) { return mesmoNivel(placar('ATRACAO', a.id), topo); });
+      empatadas.sort(function (a, b) {
+        const da = distancia(areaAtual, a.area), db = distancia(areaAtual, b.area);
+        if (da !== db) return da - db;
+        const oa = areas.indexOf(a.area), ob = areas.indexOf(b.area);
+        if (oa !== ob) return oa - ob;
+        return a.nome < b.nome ? -1 : 1;
+      });
+      const prox = empatadas[0];
+      escolhidas.push(prox);
+      areaAtual = prox.area;
+      restantes.splice(restantes.indexOf(prox), 1);
+    }
 
     escolhidas.forEach(function (a, idx) {
       const min = Number(a.altura_min_cm || 0);
@@ -524,7 +550,7 @@ function montarRoteiro_(dias, locais, atracoes, pessoas, votos, carimbo) {
         const baixos = pessoas.filter(function (p) { return p.altura_cm !== '' && Number(p.altura_cm) < min; }).map(function (p) { return p.nome; });
         if (baixos.length) alerta = 'Altura mínima ' + min + ' cm — não podem ir: ' + baixos.join(', ');
       }
-      saida.push([d.data, String(idx + 1), d.cidade, d.tipo, localId, a.area, a.id, a.nome, String(ptsAtr(a.id)), alerta, carimbo]);
+      saida.push([d.data, String(idx + 1), d.cidade, d.tipo, localId, a.area, a.id, a.nome, String(placar('ATRACAO', a.id).saldo), alerta, carimbo]);
     });
   });
   return saida;
@@ -576,7 +602,7 @@ function quemVotou_(votos, pessoas, tipo, id) {
     if (g[val]) g[val].push(nome[v.pessoa_id]);
     pts += Number(v.valor);
   });
-  return { quero: g['2'], tanto: g['1'], nao: g['-1'], pts: pts };
+  return { quero: g['2'], tanto: g['1'], nao: g['-1'], pts: (g['2'].length + g['1'].length) - g['-1'].length, pontosAntigos: pts };
 }
 
 function textoVotos_(q) {
@@ -618,7 +644,8 @@ function htmlPdf_(linhas, dias, locais, atracoes, pessoas, votos, carimbo) {
   let h = '<html><head><meta charset="utf-8"><style>' + css + '</style></head><body>';
   h += '<h1>Roteiro Orlando 2027</h1>';
   h += '<div class="sub">Tampa → Orlando → Miami → Tampa · 08 a 19/02/2027 · montado pelos votos em ' + escPdf_(carimbo) +
-    ' · ' + pessoas.length + ' pessoas · ' + votos.length + ' votos</div>';
+    ' · ' + pessoas.length + ' pessoas · ' + votos.length + ' votos</div>' +
+    '<div class="sub">Regra: cada pessoa vale 1 voto. Saldo = (Quero muito + Tanto faz) − Não quero. Empate: mais "Quero muito" primeiro e, entre iguais, a atração mais perto da anterior no parque.</div>';
 
   ordem.forEach(function (data) {
     const rs = porDia[data].sort(function (a, b) { return Number(a[1]) - Number(b[1]); });
@@ -632,7 +659,7 @@ function htmlPdf_(linhas, dias, locais, atracoes, pessoas, votos, carimbo) {
       const qp = quemVotou_(votos, pessoas, 'LOCAL', local.id);
       h += '<div class="vp"><b>Votos neste local (' + qp.pts + ' pontos):</b><br>' + textoVotos_(qp) + '</div>';
       if (itens.length) {
-        h += '<table><tr><th class="n">#</th><th>Atração</th><th>Área</th><th class="p">Pontos</th><th>Quem votou</th></tr>';
+        h += '<table><tr><th class="n">#</th><th>Atração</th><th>Área</th><th class="p">Saldo</th><th>Quem votou</th></tr>';
         itens.forEach(function (it) {
           const qa = quemVotou_(votos, pessoas, 'ATRACAO', it[6]);
           h += '<tr><td class="n">' + escPdf_(it[1]) + '</td><td><b>' + escPdf_(it[7]) + '</b>' +
@@ -650,8 +677,8 @@ function htmlPdf_(linhas, dias, locais, atracoes, pessoas, votos, carimbo) {
   // Ranking geral
   const rank = locais.filter(function (l) { return l.dia_inteiro === 'SIM'; }).map(function (l) {
     return { l: l, q: quemVotou_(votos, pessoas, 'LOCAL', l.id) };
-  }).sort(function (a, b) { return b.q.pts - a.q.pts || Number(a.l.ordem) - Number(b.l.ordem); });
-  h += '<h2>Ranking dos parques e passeios</h2><table><tr><th class="n">#</th><th>Local</th><th class="p">Pontos</th><th>Quem votou</th></tr>';
+  }).sort(function (a, b) { return b.q.pts - a.q.pts || b.q.quero.length - a.q.quero.length || a.q.nao.length - b.q.nao.length || Number(a.l.ordem) - Number(b.l.ordem); });
+  h += '<h2>Ranking dos parques e passeios</h2><table><tr><th class="n">#</th><th>Local</th><th class="p">Saldo</th><th>Quem votou</th></tr>';
   rank.forEach(function (r, i) {
     h += '<tr><td class="n">' + (i + 1) + '</td><td>' + escPdf_(r.l.nome) + '</td><td class="p">' + r.q.pts + '</td><td>' + textoVotos_(r.q) + '</td></tr>';
   });

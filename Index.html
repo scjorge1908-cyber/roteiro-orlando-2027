@@ -236,7 +236,7 @@ function indexar() {
     var g = I.agg[k] || (I.agg[k] = { q: 0, t: 0, n: 0, pts: 0, meu: 0, quem: { '2': [], '1': [], '-1': [] } });
     var val = Number(v.valor);
     if (val === 2) g.q++; else if (val === 1) g.t++; else if (val === -1) g.n++;
-    g.pts += val;
+    g.pts += (val > 0 ? 1 : -1); // cada pessoa vale 1: a favor (😍/🙂) soma 1, não quero (🙅) tira 1
     if (I.nome[v.pessoa_id]) g.quem[String(val)].push(I.nome[v.pessoa_id]);
     if (S.eu && v.pessoa_id === S.eu.id) g.meu = val;
     if (I.votosPessoa[v.pessoa_id] != null) I.votosPessoa[v.pessoa_id]++;
@@ -352,7 +352,7 @@ function resumoVotos(tipo, id) {
   var quem = VOTOS.filter(function (o) { return a.quem[String(o.v)].length; }).map(function (o) {
     return o.emo + ' ' + esc(a.quem[String(o.v)].join(', '));
   }).join('<br>');
-  return '<div class="resumo"><span>😍 ' + a.q + '</span><span>🙂 ' + a.t + '</span><span>🙅 ' + a.n + '</span><span class="pts">' + plural(a.pts, 'ponto', 'pontos') + '</span></div>' +
+  return '<div class="resumo"><span>😍 ' + a.q + '</span><span>🙂 ' + a.t + '</span><span>🙅 ' + a.n + '</span><span class="pts">saldo ' + a.pts + '</span></div>' +
     '<details class="quem"><summary>Quem votou</summary><div>' + quem + '</div></details>';
 }
 
@@ -453,7 +453,8 @@ function vRoteiro() {
   var linhas = roteiroAoVivo();
   var html = '<div class="titulo-sec"><h2>Roteiro da viagem</h2><span>🔴 ao vivo pelos votos</span></div>' +
     '<button class="btn ouro largo" data-acao="pdf" style="margin-bottom:12px">📄 Baixar roteiro em PDF</button>' +
-    '<div class="dica">O roteiro se monta sozinho conforme a família vota: primeiro escolhe o parque mais votado para cada dia livre e, dentro do parque, começa pela atração mais votada. Dias 🔒 fixos (ingressos comprados) são respeitados.</div>';
+    '<div class="dica">O roteiro se monta sozinho conforme a família vota. <b>Cada pessoa vale 1 voto</b>: 😍 Quero muito e 🙂 Tanto faz contam a favor, 🙅 Não quero conta contra. ' +
+    'Vence o maior saldo (a favor − contra); no empate, quem tem mais 😍. Entre atrações com o mesmo voto, vem primeiro a que está <b>mais perto da anterior</b> no parque, para andar menos. Dias 🔒 fixos (ingressos comprados) são respeitados.</div>';
   if (!linhas.length) {
     html += '<div class="vazio"><b>🗓️</b>O roteiro ainda não foi gerado.<br>Quando todos votarem, o organizador gera na aba <b>Grupo</b>.</div>';
     html += vDiasPlanejados();
@@ -475,13 +476,13 @@ function vRoteiro() {
       '<div class="local">' + esc(cab.nome) + '</div></div>' +
       '<div class="badges" style="justify-content:flex-end"><span class="badge ouro">' + esc(TIPOS_DIA[cab.tipo] || cab.tipo) + '</span><span class="badge">📍 ' + esc(cab.cidade) + '</span></div></div>' +
       (cab.alerta ? '<p class="desc">' + esc(cab.alerta) + '</p>' : '') +
-      (l ? '<div class="voto-local"><b>' + plural(agg('LOCAL', l.id).pts, 'ponto', 'pontos') + '</b> ' + (linhaQuem('LOCAL', l.id) || '<span class="quem-l">ninguém votou ainda</span>') + '</div>' : '');
+      (l ? '<div class="voto-local"><b>saldo ' + agg('LOCAL', l.id).pts + '</b> ' + (linhaQuem('LOCAL', l.id) || '<span class="quem-l">ninguém votou ainda</span>') + '</div>' : '');
     if (itens.length) {
       itens.forEach(function (it) {
         html += '<div class="passo"><span class="n">' + esc(it.ordem) + '</span><div>' + esc(it.nome) +
           '<span class="area-l">📍 ' + esc(it.area) + '</span>' + linhaQuem('ATRACAO', it.item_id) +
           (it.alerta ? '<span class="al">⚠️ ' + esc(it.alerta) + '</span>' : '') + '</div>' +
-          (Number(it.pontos) ? '<span class="p">' + esc(it.pontos) + ' pts</span>' : '') + '</div>';
+          '<span class="p">saldo ' + esc(it.pontos) + '</span>' + '</div>';
       });
     } else if (l) {
       html += '<p class="desc">Nenhuma atração com votos positivos ainda.</p>';
@@ -494,7 +495,7 @@ function vRoteiro() {
     .sort(function (a, b) { return agg('ATRACAO', b.id).pts - agg('ATRACAO', a.id).pts; });
   if (extras.length) {
     html += '<div class="card"><div class="corpo"><h3>🌙 Para as noites livres em Orlando</h3>' + extras.map(function (a, i) {
-      return '<div class="passo"><span class="n">' + (i + 1) + '</span><div>' + esc(a.nome) + '</div><span class="p">' + agg('ATRACAO', a.id).pts + ' pts</span></div>';
+      return '<div class="passo"><span class="n">' + (i + 1) + '</span><div>' + esc(a.nome) + '</div><span class="p">' + 'saldo ' + agg('ATRACAO', a.id).pts + '</span></div>';
     }).join('') + '</div></div>';
   }
   return html;
@@ -515,11 +516,11 @@ function vGrupo() {
 
   // Ranking
   var rank = S.d.locais.filter(function (l) { return l.dia_inteiro === 'SIM'; }).map(function (l) { return { l: l, a: agg('LOCAL', l.id) }; })
-    .sort(function (x, y) { return y.a.pts - x.a.pts || Number(x.l.ordem) - Number(y.l.ordem); });
+    .sort(function (x, y) { return y.a.pts - x.a.pts || y.a.q - x.a.q || x.a.n - y.a.n || Number(x.l.ordem) - Number(y.l.ordem); });
   var max = Math.max(1, rank.length ? rank[0].a.pts : 1);
   html += '<div class="card"><div class="corpo"><h3>🏆 Ranking dos parques e passeios</h3><table class="tabela">' + rank.map(function (r, i) {
     var pct = Math.max(0, Math.round(r.a.pts / max * 100));
-    return '<tr><td>' + (i + 1) + '. ' + esc(r.l.nome) + '<div class="barra"><i style="width:' + pct + '%"></i></div></td><td class="num">' + r.a.pts + ' pts<br><span style="font-weight:500;color:var(--suave);font-size:12px">😍' + r.a.q + ' 🙂' + r.a.t + ' 🙅' + r.a.n + '</span></td></tr>';
+    return '<tr><td>' + (i + 1) + '. ' + esc(r.l.nome) + '<div class="barra"><i style="width:' + pct + '%"></i></div></td><td class="num">' + 'saldo ' + r.a.pts + '<br><span style="font-weight:500;color:var(--suave);font-size:12px">😍' + r.a.q + ' 🙂' + r.a.t + ' 🙅' + r.a.n + '</span></td></tr>';
   }).join('') + '</table></div></div>';
 
   // Participação
