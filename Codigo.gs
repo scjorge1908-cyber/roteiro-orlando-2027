@@ -41,10 +41,19 @@ const TIPOS_AUTOMATICOS = ['PARQUE', 'RETORNO', 'MIAMI'];
  * ========================================================= */
 
 function doGet() {
-  return HtmlService.createHtmlOutputFromFile('Index')
+  const tpl = HtmlService.createTemplateFromFile('Index');
+  tpl.motor = motorJs_();
+  return tpl.evaluate()
     .setTitle('Roteiro Orlando 2027')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1, maximum-scale=1')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+/** Motor do roteiro enviado para a tela: o mesmo código do servidor monta o roteiro ao vivo no celular. */
+function motorJs_() {
+  return 'var REGIOES_POR_CIDADE = ' + JSON.stringify(REGIOES_POR_CIDADE) + ';\n' +
+    'var TIPOS_AUTOMATICOS = ' + JSON.stringify(TIPOS_AUTOMATICOS) + ';\n' +
+    montarRoteiro_.toString() + '\n';
 }
 
 function onOpen() {
@@ -462,6 +471,10 @@ function montarRoteiro_(dias, locais, atracoes, pessoas, votos, carimbo) {
       const candidatos = locais.filter(function (l) {
         return l.dia_inteiro === 'SIM' && regioes.indexOf(l.regiao) >= 0 && ptsLocal(l.id) >= 0;
       }).sort(function (a, b) {
+        // Máximo de parques diferentes: 1º os votados ainda não usados, 2º os sem voto ainda não usados, por último repetir.
+        const nivel = function (l) { return (usados[l.id] || 0) > 0 ? 2 : (ptsLocal(l.id) > 0 ? 0 : 1); };
+        const na = nivel(a), nb = nivel(b);
+        if (na !== nb) return na - nb;
         const ua = usados[a.id] || 0, ub = usados[b.id] || 0;
         if (ua !== ub) return ua - ub;
         const pa = ptsLocal(a.id), pb = ptsLocal(b.id);
@@ -473,14 +486,15 @@ function montarRoteiro_(dias, locais, atracoes, pessoas, votos, carimbo) {
     }
 
     const local = localPorId[localId];
-    saida.push([d.data, '0', d.cidade, d.tipo, localId || '', '', '', local ? local.nome : 'Dia livre', local ? String(ptsLocal(localId)) : '', d.observacao || '', carimbo]);
+    saida.push([d.data, '0', d.cidade, d.tipo, localId || '', '', '', local ? local.nome : (TIPOS_AUTOMATICOS.indexOf(d.tipo) >= 0 ? 'A definir pela votação' : 'Dia livre'), local ? String(ptsLocal(localId)) : '', d.observacao || '', carimbo]);
     if (!local) return;
 
     const lista = atracoes.filter(function (a) { return a.local_id === localId; });
     const alguemVotou = lista.some(function (a) { return temVoto['ATRACAO:' + a.id]; });
+    // Ao vivo: entram só as atrações com saldo positivo de votos.
     let escolhidas = lista.filter(function (a) {
       const p = ptsAtr(a.id);
-      return alguemVotou ? p > 0 : true;
+      return alguemVotou ? p > 0 : false;
     });
 
     const areas = [];
@@ -494,11 +508,12 @@ function montarRoteiro_(dias, locais, atracoes, pessoas, votos, carimbo) {
     }
     const ordemAreas = areas.slice(inicio).concat(areas.slice(0, inicio));
 
+    // Prioridade: a atração mais votada primeiro; empate → mesma área seguida, depois nome.
     escolhidas = escolhidas.sort(function (a, b) {
-      const ia = ordemAreas.indexOf(a.area), ib = ordemAreas.indexOf(b.area);
-      if (ia !== ib) return ia - ib;
       const pa = ptsAtr(a.id), pb = ptsAtr(b.id);
       if (pa !== pb) return pb - pa;
+      const ia = ordemAreas.indexOf(a.area), ib = ordemAreas.indexOf(b.area);
+      if (ia !== ib) return ia - ib;
       return a.nome < b.nome ? -1 : 1;
     });
 
@@ -513,6 +528,144 @@ function montarRoteiro_(dias, locais, atracoes, pessoas, votos, carimbo) {
     });
   });
   return saida;
+}
+
+
+/* =========================================================
+ *  PDF DO ROTEIRO (ao vivo, com quem votou)
+ * ========================================================= */
+
+function api_pdf() {
+  try {
+    garantirSetup_();
+    const dias = ler_(ABA.DIAS).slice().sort(function (a, b) { return a.data < b.data ? -1 : 1; });
+    const locais = ler_(ABA.LOCAIS);
+    const atracoes = ler_(ABA.ATRACOES).filter(function (a) { return a.ativo !== 'NAO'; });
+    const pessoas = ler_(ABA.PESSOAS);
+    const votos = ler_(ABA.VOTOS);
+    const carimbo = agora_();
+    const linhas = montarRoteiro_(dias, locais, atracoes, pessoas, votos, carimbo);
+    const html = htmlPdf_(linhas, dias, locais, atracoes, pessoas, votos, carimbo);
+    const nome = 'Roteiro-Orlando-2027.pdf';
+    const pdf = Utilities.newBlob(html, 'text/html', 'roteiro.html').getAs('application/pdf').setName(nome);
+    return { ok: true, nome: nome, base64: Utilities.base64Encode(pdf.getBytes()) };
+  } catch (e) {
+    return { ok: false, erro: String(e.message || e) };
+  }
+}
+
+function escPdf_(s) {
+  return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function dataPdf_(iso) {
+  const p = String(iso).split('-').map(Number);
+  const d = new Date(p[0], p[1] - 1, p[2]);
+  const sem = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'][d.getDay()];
+  return sem + ', ' + ('0' + p[2]).slice(-2) + '/' + ('0' + p[1]).slice(-2) + '/' + p[0];
+}
+
+function quemVotou_(votos, pessoas, tipo, id) {
+  const nome = {};
+  pessoas.forEach(function (p) { nome[p.id] = p.nome; });
+  const g = { '2': [], '1': [], '-1': [] };
+  let pts = 0;
+  votos.forEach(function (v) {
+    if (v.tipo_item !== tipo || v.item_id !== id || !nome[v.pessoa_id]) return;
+    const val = String(Number(v.valor));
+    if (g[val]) g[val].push(nome[v.pessoa_id]);
+    pts += Number(v.valor);
+  });
+  return { quero: g['2'], tanto: g['1'], nao: g['-1'], pts: pts };
+}
+
+function textoVotos_(q) {
+  const partes = [];
+  if (q.quero.length) partes.push('<b>Quero muito:</b> ' + escPdf_(q.quero.join(', ')));
+  if (q.tanto.length) partes.push('<b>Tanto faz:</b> ' + escPdf_(q.tanto.join(', ')));
+  if (q.nao.length) partes.push('<b>Não quero:</b> ' + escPdf_(q.nao.join(', ')));
+  return partes.length ? partes.join('<br>') : '<i>ninguém votou</i>';
+}
+
+function htmlPdf_(linhas, dias, locais, atracoes, pessoas, votos, carimbo) {
+  const nomesTipo = { CHEGADA: 'Chegada', PARQUE: 'Parque', MIAMI: 'Miami', RETORNO: 'Retorno', LIVRE: 'Livre' };
+  const localPorId = {};
+  locais.forEach(function (l) { localPorId[l.id] = l; });
+  const porDia = {};
+  const ordem = [];
+  linhas.forEach(function (r) {
+    if (!porDia[r[0]]) { porDia[r[0]] = []; ordem.push(r[0]); }
+    porDia[r[0]].push(r);
+  });
+  ordem.sort();
+
+  const css = 'body{font-family:Arial,Helvetica,sans-serif;font-size:10pt;color:#172036;}' +
+    'h1{font-size:18pt;color:#0b1f4b;margin:0 0 2px 0;}' +
+    '.sub{color:#5d6a85;font-size:9pt;margin-bottom:12px;}' +
+    '.dia{border:1px solid #c9d3e6;border-left:6px solid #f5b82e;margin:0 0 12px 0;padding:8px 10px;page-break-inside:avoid;}' +
+    '.dt{font-size:12pt;font-weight:bold;color:#0b1f4b;}' +
+    '.lc{font-size:11pt;font-weight:bold;margin:2px 0 4px 0;}' +
+    '.obs{color:#5d6a85;font-size:9pt;margin:2px 0 6px 0;}' +
+    '.vp{background:#f3f6fb;padding:5px 7px;font-size:9pt;margin:4px 0 6px 0;}' +
+    'table{width:100%;border-collapse:collapse;font-size:9pt;}' +
+    'th{background:#0b1f4b;color:#ffffff;text-align:left;padding:4px;}' +
+    'td{border-bottom:1px solid #dfe6f2;padding:4px;vertical-align:top;}' +
+    '.n{width:18px;text-align:center;font-weight:bold;}' +
+    '.p{width:40px;text-align:center;font-weight:bold;color:#0b1f4b;}' +
+    '.al{color:#d93636;font-size:8.5pt;}' +
+    'h2{font-size:13pt;color:#0b1f4b;margin:16px 0 6px 0;}';
+
+  let h = '<html><head><meta charset="utf-8"><style>' + css + '</style></head><body>';
+  h += '<h1>Roteiro Orlando 2027</h1>';
+  h += '<div class="sub">Tampa → Orlando → Miami → Tampa · 08 a 19/02/2027 · montado pelos votos em ' + escPdf_(carimbo) +
+    ' · ' + pessoas.length + ' pessoas · ' + votos.length + ' votos</div>';
+
+  ordem.forEach(function (data) {
+    const rs = porDia[data].sort(function (a, b) { return Number(a[1]) - Number(b[1]); });
+    const cab = rs[0];
+    const itens = rs.slice(1);
+    const local = localPorId[cab[4]];
+    h += '<div class="dia"><div class="dt">' + escPdf_(dataPdf_(data)) + ' · ' + escPdf_(nomesTipo[cab[3]] || cab[3]) + ' · ' + escPdf_(cab[2]) + '</div>';
+    h += '<div class="lc">' + escPdf_(cab[7]) + '</div>';
+    if (cab[9]) h += '<div class="obs">' + escPdf_(cab[9]) + '</div>';
+    if (local) {
+      const qp = quemVotou_(votos, pessoas, 'LOCAL', local.id);
+      h += '<div class="vp"><b>Votos neste local (' + qp.pts + ' pontos):</b><br>' + textoVotos_(qp) + '</div>';
+      if (itens.length) {
+        h += '<table><tr><th class="n">#</th><th>Atração</th><th>Área</th><th class="p">Pontos</th><th>Quem votou</th></tr>';
+        itens.forEach(function (it) {
+          const qa = quemVotou_(votos, pessoas, 'ATRACAO', it[6]);
+          h += '<tr><td class="n">' + escPdf_(it[1]) + '</td><td><b>' + escPdf_(it[7]) + '</b>' +
+            (it[9] ? '<br><span class="al">' + escPdf_(it[9]) + '</span>' : '') + '</td><td>' + escPdf_(it[5]) +
+            '</td><td class="p">' + escPdf_(it[8]) + '</td><td>' + textoVotos_(qa) + '</td></tr>';
+        });
+        h += '</table>';
+      } else {
+        h += '<div class="obs">Nenhuma atração com votos positivos ainda.</div>';
+      }
+    }
+    h += '</div>';
+  });
+
+  // Ranking geral
+  const rank = locais.filter(function (l) { return l.dia_inteiro === 'SIM'; }).map(function (l) {
+    return { l: l, q: quemVotou_(votos, pessoas, 'LOCAL', l.id) };
+  }).sort(function (a, b) { return b.q.pts - a.q.pts || Number(a.l.ordem) - Number(b.l.ordem); });
+  h += '<h2>Ranking dos parques e passeios</h2><table><tr><th class="n">#</th><th>Local</th><th class="p">Pontos</th><th>Quem votou</th></tr>';
+  rank.forEach(function (r, i) {
+    h += '<tr><td class="n">' + (i + 1) + '</td><td>' + escPdf_(r.l.nome) + '</td><td class="p">' + r.q.pts + '</td><td>' + textoVotos_(r.q) + '</td></tr>';
+  });
+  h += '</table>';
+
+  // Participação
+  const contagem = {};
+  votos.forEach(function (v) { contagem[v.pessoa_id] = (contagem[v.pessoa_id] || 0) + 1; });
+  h += '<h2>Participação</h2><table><tr><th>Pessoa</th><th class="p">Votos</th></tr>';
+  pessoas.forEach(function (p) {
+    h += '<tr><td>' + escPdf_(p.nome) + (p.altura_cm ? ' (' + escPdf_(p.altura_cm) + ' cm)' : '') + '</td><td class="p">' + (contagem[p.id] || 0) + '</td></tr>';
+  });
+  h += '</table></body></html>';
+  return h;
 }
 
 /* =========================================================

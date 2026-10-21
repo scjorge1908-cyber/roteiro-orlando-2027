@@ -106,6 +106,10 @@
     .passo .n { width: 24px; height: 24px; min-width: 24px; border-radius: 50%; background: var(--ceu); color: var(--azul2); font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
     .passo .p { margin-left: auto; color: var(--suave); font-size: 12px; white-space: nowrap; }
     .passo .al { display: block; color: var(--perigo); font-size: 12px; margin-top: 2px; }
+    .area-l { display: block; color: var(--suave); font-size: 11.5px; margin-top: 1px; }
+    .quem-l { display: block; color: var(--azul2); font-size: 12px; margin-top: 2px; line-height: 1.4; }
+    .voto-local { background: var(--ceu); border-radius: 10px; padding: 7px 10px; font-size: 12.5px; margin: 8px 0 6px; color: var(--azul); }
+    .voto-local .quem-l { display: inline; }
     .subarea { font-size: 12px; font-weight: 700; color: var(--suave); text-transform: uppercase; letter-spacing: .5px; margin: 10px 0 2px; }
 
     .tabela { width: 100%; border-collapse: collapse; font-size: 13.5px; }
@@ -156,6 +160,9 @@
   <div id="modal"></div>
   <div id="toast"></div>
 
+<script>
+<?!= motor ?>
+</script>
 <script>
 /* ===================== ESTADO ===================== */
 var S = {
@@ -422,9 +429,31 @@ function vAtracoes() {
   return html;
 }
 
+/* Roteiro ao vivo: o mesmo motor do servidor (montarRoteiro_) roda aqui com os votos atuais. */
+var COLS_ROTEIRO = ['data', 'ordem', 'cidade', 'tipo', 'local_id', 'area', 'item_id', 'nome', 'pontos', 'alerta', 'gerado_em'];
+function roteiroAoVivo() {
+  if (typeof montarRoteiro_ !== 'function') return S.d.roteiro || [];
+  var dias = S.d.dias.slice().sort(function (a, b) { return a.data < b.data ? -1 : 1; });
+  var linhas = montarRoteiro_(dias, S.d.locais, S.d.atracoes, S.d.pessoas, S.d.votos, 'ao vivo');
+  return linhas.map(function (r) {
+    var o = {};
+    COLS_ROTEIRO.forEach(function (c, i) { o[c] = r[i]; });
+    return o;
+  });
+}
+function linhaQuem(tipo, id) {
+  var a = agg(tipo, id);
+  var partes = VOTOS.filter(function (o) { return a.quem[String(o.v)].length; }).map(function (o) {
+    return o.emo + ' ' + esc(a.quem[String(o.v)].join(', '));
+  });
+  return partes.length ? '<span class="quem-l">' + partes.join(' · ') + '</span>' : '';
+}
+
 function vRoteiro() {
-  var linhas = S.d.roteiro || [];
-  var html = '<div class="titulo-sec"><h2>Roteiro da viagem</h2>' + (linhas.length ? '<span>gerado em ' + esc((linhas[0].gerado_em || '').slice(0, 16)) + '</span>' : '') + '</div>';
+  var linhas = roteiroAoVivo();
+  var html = '<div class="titulo-sec"><h2>Roteiro da viagem</h2><span>🔴 ao vivo pelos votos</span></div>' +
+    '<button class="btn ouro largo" data-acao="pdf" style="margin-bottom:12px">📄 Baixar roteiro em PDF</button>' +
+    '<div class="dica">O roteiro se monta sozinho conforme a família vota: primeiro escolhe o parque mais votado para cada dia livre e, dentro do parque, começa pela atração mais votada. Dias 🔒 fixos (ingressos comprados) são respeitados.</div>';
   if (!linhas.length) {
     html += '<div class="vazio"><b>🗓️</b>O roteiro ainda não foi gerado.<br>Quando todos votarem, o organizador gera na aba <b>Grupo</b>.</div>';
     html += vDiasPlanejados();
@@ -445,12 +474,12 @@ function vRoteiro() {
     html += '<div class="card dia"><div class="corpo"><div class="cab"><div><div class="data">' + esc(fmtData(data)) + '</div>' +
       '<div class="local">' + esc(cab.nome) + '</div></div>' +
       '<div class="badges" style="justify-content:flex-end"><span class="badge ouro">' + esc(TIPOS_DIA[cab.tipo] || cab.tipo) + '</span><span class="badge">📍 ' + esc(cab.cidade) + '</span></div></div>' +
-      (cab.alerta ? '<p class="desc">' + esc(cab.alerta) + '</p>' : '');
+      (cab.alerta ? '<p class="desc">' + esc(cab.alerta) + '</p>' : '') +
+      (l ? '<div class="voto-local"><b>' + plural(agg('LOCAL', l.id).pts, 'ponto', 'pontos') + '</b> ' + (linhaQuem('LOCAL', l.id) || '<span class="quem-l">ninguém votou ainda</span>') + '</div>' : '');
     if (itens.length) {
-      var area = null;
       itens.forEach(function (it) {
-        if (it.area !== area) { area = it.area; html += '<div class="subarea">' + esc(area) + '</div>'; }
         html += '<div class="passo"><span class="n">' + esc(it.ordem) + '</span><div>' + esc(it.nome) +
+          '<span class="area-l">📍 ' + esc(it.area) + '</span>' + linhaQuem('ATRACAO', it.item_id) +
           (it.alerta ? '<span class="al">⚠️ ' + esc(it.alerta) + '</span>' : '') + '</div>' +
           (Number(it.pontos) ? '<span class="p">' + esc(it.pontos) + ' pts</span>' : '') + '</div>';
       });
@@ -513,7 +542,7 @@ function vGrupo() {
       '<div class="grade2"><div class="campo"><input id="pinAdmin" type="password" inputmode="numeric" placeholder="PIN de 6 números"></div>' +
       '<div><button class="btn largo" data-acao="adminEntrar">Entrar</button></div></div>';
   } else {
-    html += '<button class="btn ouro largo" data-acao="gerar">✨ Gerar roteiro com os votos</button>' +
+    html += '<button class="btn ouro largo" data-acao="gerar">💾 Salvar roteiro atual na planilha</button>' +
       '<p class="desc" style="margin-top:10px">Dias marcados como <b>fixo</b> mantêm o local escolhido (use para os ingressos já comprados). Nos outros, deixe <b>Automático</b> e o sistema escolhe pelos votos.</p>';
     var dias = S.d.dias.slice().sort(function (a, b) { return a.data < b.data ? -1 : 1; });
     var opLocais = locaisOrdenados(function (l) { return l.dia_inteiro === 'SIM'; });
@@ -698,11 +727,21 @@ document.addEventListener('click', function (e) {
     }).catch(function (err) { b.disabled = false; toast(String(err.message || err), true); });
   }
 
+  if (acao === 'pdf') {
+    b.disabled = true; b.textContent = 'Gerando PDF…';
+    return run('api_pdf').then(function (r) {
+      b.disabled = false; b.textContent = '📄 Baixar roteiro em PDF';
+      if (!r || !r.ok) return toast(r ? r.erro : 'Falha ao gerar o PDF', true);
+      baixarPdf(r.base64, r.nome);
+      toast('PDF pronto!');
+    }).catch(function (err) { b.disabled = false; b.textContent = '📄 Baixar roteiro em PDF'; toast(String(err.message || err), true); });
+  }
+
   if (acao === 'gerar') {
     b.disabled = true; b.textContent = 'Gerando…';
     return admin('gerarRoteiro').then(function (r) {
-      S.d.roteiro = r.roteiro; S.aba = 'roteiro'; render(); window.scrollTo(0, 0); toast('Roteiro gerado!');
-    }).catch(function (err) { b.disabled = false; b.textContent = '✨ Gerar roteiro com os votos'; toast(String(err.message || err), true); });
+      S.d.roteiro = r.roteiro; S.aba = 'roteiro'; render(); window.scrollTo(0, 0); toast('Roteiro salvo na aba Roteiro da planilha!');
+    }).catch(function (err) { b.disabled = false; b.textContent = '💾 Salvar roteiro atual na planilha'; toast(String(err.message || err), true); });
   }
 
   if (acao === 'salvarPessoaAdm' || acao === 'resetPin') {
@@ -733,6 +772,21 @@ document.addEventListener('keydown', function (e) {
     if (btn) btn.click();
   }
 });
+
+/* ===================== PDF ===================== */
+function baixarPdf(base64, nome) {
+  var bin = atob(base64);
+  var bytes = new Uint8Array(bin.length);
+  for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  var blob = new Blob([bytes], { type: 'application/pdf' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = nome || 'Roteiro-Orlando-2027.pdf';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(function () { document.body.removeChild(a); URL.revokeObjectURL(url); }, 4000);
+}
 
 /* ===================== FOTOS (Wikimedia Commons, licença livre) ===================== */
 var filaFotos = [];
