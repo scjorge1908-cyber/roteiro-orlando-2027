@@ -34,7 +34,7 @@ Cada pessoa abre o link no celular, escolhe o nome, cria um PIN e vota nos parqu
 
 ## Como o roteiro é montado
 
-- Votos: 😍 Quero muito = 2 pontos, 🙂 Tanto faz = 1, 🙅 Não quero = −1.
+- Votos: cada pessoa vale 1. 😍 Quero muito e 🙂 Tanto faz contam a favor, 🙅 Não quero conta contra. Saldo = a favor − contra; empate → mais 😍; entre atrações empatadas, a mais perto da anterior no parque vem primeiro.
 - Dias **fixos** mantêm o local escolhido (ingressos já comprados).
 - Os outros dias de parque recebem o local com mais pontos da região, sem repetir enquanto houver opção. Locais com saldo negativo ficam de fora.
 - Dias em Orlando podem receber a NASA (Kennedy Space Center); o dia de retorno escolhe entre os locais de Tampa.

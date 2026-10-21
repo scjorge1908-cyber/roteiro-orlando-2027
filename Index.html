@@ -384,7 +384,7 @@ function cardLocal(l) {
 function vParques() {
   var lista = locaisOrdenados(function (l) { return l.tipo === 'PARQUE' || l.tipo === 'PARQUE_AQUATICO'; });
   return '<div class="titulo-sec"><h2>Quais parques vamos?</h2><span>' + plural(lista.length, 'parque', 'parques') + '</span></div>' +
-    '<div class="dica">Vote em cada parque. O roteiro coloca primeiro os parques com mais pontos (😍 = 2, 🙂 = 1, 🙅 = −1) e evita repetir parque enquanto houver opções. Depois toque em <b>Ver atrações</b> para escolher os brinquedos.</div>' +
+    '<div class="dica">Vote em cada parque. Cada pessoa vale 1 voto: 😍 e 🙂 contam a favor, 🙅 conta contra. O roteiro coloca primeiro os parques com maior saldo (a favor − contra) e evita repetir parque enquanto houver opções. Depois toque em <b>Ver atrações</b> para escolher os brinquedos.</div>' +
     lista.map(cardLocal).join('');
 }
 
